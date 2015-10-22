@@ -1,12 +1,6 @@
 xstack.io
 =========
 
-Unless otherwise noted in the body of the source file(s) OR in the root
-directory of the corresponding module/subsystem OR in the root directory of this
-project (file names begin with COPYING), the following license will apply to the
-contents of this project:
-
-
 Copyright (c) 2015 Olli Vanhoja <olli.vanhoja@cs.helsinki.fi>
 All rights reserved.
 
