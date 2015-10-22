@@ -152,10 +152,15 @@ static void arp_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bs
     }
 
     if (arp.arp_ptype == ETHER_PROTO_IPV4) {
-                LOG(LOG_DEBUG, "ARP ipv4, op:%d", arp.arp_oper);
+        char str_ip[IP_STR_LEN];
+
+        LOG(LOG_DEBUG, "ARP ipv4, op:%d", arp.arp_oper);
+
         switch (arp.arp_oper) {
         case ARP_OPER_REQUEST:
-                LOG(LOG_DEBUG, "ARP REQ %u", arp.arp_tpa);
+            ip2str(arp.arp_tpa, str_ip);
+            LOG(LOG_DEBUG, "ARP request: %s", str_ip);
+
             if (arp.arp_tpa == ip_local_addr) {
                 LOG(LOG_DEBUG, "ARP REQ match");
 
@@ -173,7 +178,7 @@ static void arp_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bs
             break;
         case ARP_OPER_REPLY:
             /* TODO handle ARP repply */
-                LOG(LOG_DEBUG, "ARP REPLY");
+            LOG(LOG_DEBUG, "ARP REPLY");
         default:
             /* TODO Error handling */
             return;
