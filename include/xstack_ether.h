@@ -87,12 +87,15 @@ int ether_send(int handle, const mac_addr_t dst, uint16_t proto,
 
 /**
  * Receive a frame from ether.
+ * @retval >0 if a frame was received;
+ * @retval  0 if read timed out;
+ * @retval -1 if read failed, errno is set.
  */
 int ether_receive(int handle, struct ether_hdr * hdr, uint8_t * buf,
                   size_t bsize);
 
 /**
- * Handle received ethernet frame.
+ * Handle the received ethernet frame.
  */
 void ether_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize);
 

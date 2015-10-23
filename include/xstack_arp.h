@@ -38,15 +38,31 @@ struct arp_ip {
  * @}
  */
 
+/**
+ * ARP Cache Operations.
+ */
+
+/**
+ * ARP Cache entry type.
+ */
 enum arp_cache_entry_type {
-    ARP_CACHE_STATIC = -1,
-    ARP_CACHE_DYN = 1,
+    ARP_CACHE_FREE = -2,    /*!< Unused entry. */
+    ARP_CACHE_STATIC = -1,  /*!< Static entry. */
+    ARP_CACHE_DYN = 0,      /*!< Dynamic entry. */
 };
 
 int arp_cache_insert(in_addr_t ip_addr, mac_addr_t ether_addr,
                      enum arp_cache_entry_type type);
 void arp_cache_remove(in_addr_t ip_addr);
 int arp_cache_get_haddr(in_addr_t ip_addr, mac_addr_t haddr);
+
+/**
+ * @}
+ */
+
+/**
+ * Announce an IP address with ARP.
+ */
 int arp_gratuitous(int ether_handle, in_addr_t spa);
 
 #endif /* XSTACK_ARP_H */

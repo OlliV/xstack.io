@@ -11,7 +11,7 @@
 struct arp_cache_entry {
     in_addr_t ip_addr;
     mac_addr_t haddr;
-    int age; /* 0 = free slot; -1 = static */
+    int age;
 };
 
 static struct arp_cache_entry arp_cache[10]; /* TODO Configurable size */
@@ -53,10 +53,10 @@ int arp_cache_insert(in_addr_t ip_addr, mac_addr_t haddr,
 
     it = arp_cache;
     for (i = 0; i < num_elem(arp_cache); i++) {
-        if (it->age == 0) {
+        if (it->age == ARP_CACHE_FREE) {
             entry = it;
         } else if ((entry && entry->age > it->age) ||
-                   (!entry && it->age > 0)) {
+                   (!entry && it->age >= 0)) {
             entry = it;
         }
         if (it->ip_addr == ip_addr) {
@@ -99,14 +99,14 @@ void arp_cache_remove(in_addr_t ip_addr)
     struct arp_cache_entry * entry = arp_cache_get_entry(ip_addr);
 
     if (entry)
-        entry->age = 0;
+        entry->age = ARP_CACHE_FREE;
 }
 
 int arp_cache_get_haddr(in_addr_t ip_addr, mac_addr_t haddr)
 {
     struct arp_cache_entry * entry = arp_cache_get_entry(ip_addr);
 
-    if (entry) {
+    if (entry && entry->age >= 0) {
         memcpy(haddr, entry->haddr, sizeof(mac_addr_t));
         return 0;
     }
@@ -114,7 +114,6 @@ int arp_cache_get_haddr(in_addr_t ip_addr, mac_addr_t haddr)
     /* TODO Loop through each interface? */
     /* TODO How to wait for the reply? */
     if (!arp_request(ip_local_ether_handle, ip_local_addr, ip_addr)) {
-        //arp_cache_insert(ip_addr, haddr, ARP_CACHE_DYN);
         //return 0;
     }
 
@@ -130,8 +129,8 @@ static void arp_cache_update(int delta_time)
         struct arp_cache_entry * entry = &arp_cache[i];
 
         if (entry->age > ARP_CACHE_AGE_MAX) {
-            entry->age = 0;
-        } else if (entry->age > 0) {
+            entry->age = ARP_CACHE_FREE;
+        } else if (entry->age >= 0) {
             entry->age += delta_time;
         }
     }
@@ -176,9 +175,10 @@ static void arp_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bs
             break;
         case ARP_OPER_REPLY:
             /* Nothing more to do. */
+            break;
         default:
             LOG(LOG_WARN, "Invalid ARP op: %d", arp.arp_oper);
-            return;
+            break;
         }
     } else {
         LOG(LOG_DEBUG, "Unknown ptype");
