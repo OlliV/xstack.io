@@ -18,33 +18,33 @@ static struct arp_cache_entry arp_cache[10]; /* TODO Configurable size */
 
 static int arp_request(int ether_handle, in_addr_t spa, in_addr_t tpa);
 
-static void arp_hton(const struct arp_ip * arp_host, struct arp_ip * arp_net)
+static void arp_hton(const struct arp_ip * host, struct arp_ip * net)
 {
-    arp_net->arp_htype = htons(arp_host->arp_htype);
-    arp_net->arp_ptype = htons(arp_host->arp_ptype);
-    arp_net->arp_hlen = arp_host->arp_hlen;
-    arp_net->arp_plen = arp_host->arp_plen;
-    arp_net->arp_oper = htons(arp_host->arp_oper);
-    memmove(arp_net->arp_sha, arp_host->arp_sha, sizeof(mac_addr_t));
-    arp_net->arp_spa = ntohl(arp_host->arp_spa);
-    memmove(arp_net->arp_tha, arp_host->arp_tha, sizeof(mac_addr_t));
-    arp_net->arp_tpa = ntohl(arp_host->arp_tpa);
+    net->arp_htype = htons(host->arp_htype);
+    net->arp_ptype = htons(host->arp_ptype);
+    net->arp_hlen = host->arp_hlen;
+    net->arp_plen = host->arp_plen;
+    net->arp_oper = htons(host->arp_oper);
+    memmove(net->arp_sha, host->arp_sha, sizeof(mac_addr_t));
+    net->arp_spa = ntohl(host->arp_spa);
+    memmove(net->arp_tha, host->arp_tha, sizeof(mac_addr_t));
+    net->arp_tpa = ntohl(host->arp_tpa);
 }
 
-static void arp_ntoh(const struct arp_ip * arp_net, struct arp_ip * arp_host)
+static void arp_ntoh(const struct arp_ip * net, struct arp_ip * host)
 {
-    arp_host->arp_htype = htons(arp_net->arp_htype);
-    arp_host->arp_ptype = htons(arp_net->arp_ptype);
-    arp_host->arp_hlen = arp_net->arp_hlen;
-    arp_host->arp_plen = arp_net->arp_plen;
-    arp_host->arp_oper = htons(arp_net->arp_oper);
-    memmove(arp_host->arp_sha, arp_net->arp_sha, sizeof(mac_addr_t));
-    arp_host->arp_spa = ntohl(arp_net->arp_spa);
-    memmove(arp_host->arp_tha, arp_net->arp_tha, sizeof(mac_addr_t));
-    arp_host->arp_tpa = ntohl(arp_net->arp_tpa);
+    host->arp_htype = htons(net->arp_htype);
+    host->arp_ptype = htons(net->arp_ptype);
+    host->arp_hlen = net->arp_hlen;
+    host->arp_plen = net->arp_plen;
+    host->arp_oper = htons(net->arp_oper);
+    memmove(host->arp_sha, net->arp_sha, sizeof(mac_addr_t));
+    host->arp_spa = ntohl(net->arp_spa);
+    memmove(host->arp_tha, net->arp_tha, sizeof(mac_addr_t));
+    host->arp_tpa = ntohl(net->arp_tpa);
 }
 
-int arp_cache_insert(in_addr_t ip_addr, mac_addr_t haddr,
+int arp_cache_insert(in_addr_t ip_addr, const mac_addr_t haddr,
                      enum arp_cache_entry_type type)
 {
     size_t i;

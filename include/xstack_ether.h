@@ -53,6 +53,9 @@ struct _ether_proto_handler {
     void (*fn)(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize);
 };
 
+/**
+ * Declare an ethernet input chain handler.
+ */
 #define ETHER_PROTO_INPUT_HANDLER(_proto_id_, _handler_fn_)                     \
     static struct _ether_proto_handler _ether_proto_handler_##_handler_fn_ = {  \
         .proto_id = _proto_id_,                                                 \
@@ -71,6 +74,8 @@ uint32_t ether_fcs(const void * data, size_t bsize);
 
 /**
  * Get the MAC address of an interface.
+ * @param[in] handle is the ether handle.
+ * @param[out] addr is the destination buffer.
  */
 int ether_handle2addr(int handle, mac_addr_t addr);
 
@@ -80,7 +85,7 @@ int ether_handle2addr(int handle, mac_addr_t addr);
 int ether_addr2handle(const mac_addr_t addr);
 
 /**
- * Send a frame to destionation over ether.
+ * Send a frame to a destionation over ether.
  */
 int ether_send(int handle, const mac_addr_t dst, uint16_t proto,
                uint8_t * buf, size_t bsize);

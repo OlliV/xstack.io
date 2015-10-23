@@ -51,7 +51,7 @@ enum arp_cache_entry_type {
     ARP_CACHE_DYN = 0,      /*!< Dynamic entry. */
 };
 
-int arp_cache_insert(in_addr_t ip_addr, mac_addr_t ether_addr,
+int arp_cache_insert(in_addr_t ip_addr, const mac_addr_t ether_addr,
                      enum arp_cache_entry_type type);
 void arp_cache_remove(in_addr_t ip_addr);
 int arp_cache_get_haddr(in_addr_t ip_addr, mac_addr_t haddr);
