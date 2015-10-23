@@ -14,7 +14,7 @@ int ip_config(int ether_handle, in_addr_t ip_addr)
     ip_local_ether_handle = ether_handle;
     ip_local_addr = ip_addr;
 
-    for (size_t i = 0; i < 5; i++) {
+    for (size_t i = 0; i < 3; i++) {
         arp_gratuitous(ether_handle, ip_local_addr);
     }
 

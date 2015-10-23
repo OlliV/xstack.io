@@ -18,7 +18,7 @@ void ether_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize)
         proto = NULL;
     }
 
-    LOG(LOG_DEBUG, "proto id: %x", hdr->h_proto);
+    LOG(LOG_DEBUG, "proto id: 0x%x", hdr->h_proto);
 
     if (proto) {
         proto->fn(hdr, payload, bsize);

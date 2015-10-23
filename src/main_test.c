@@ -14,7 +14,7 @@ static int eval_timer(void)
 
     clock_gettime(CLOCK_MONOTONIC, &now);
     delta_time = now.tv_sec - start.tv_sec;
-    if (delta_time >= 10) {
+    if (delta_time >= XSTACK_PERIODIC_EVENT_SEC) {
         start = now;
         return !0;
     }
@@ -47,12 +47,11 @@ int main(void)
         printf("Waiting for rx\n");
         retval = ether_receive(handle, &hdr, rx_buffer, sizeof(rx_buffer));
         if (retval == -1) {
-            /* TODO Error handling */
-            perror("Failed");
-            break;
+            perror("Rx failed");
+        } else if (retval > 0) {
+            printf("Frame received!\n");
+            ether_input(&hdr, rx_buffer, retval);
         }
-        printf("Frame received!\n");
-        ether_input(&hdr, rx_buffer, retval);
 
         if (eval_timer()) {
             printf("tick\n");

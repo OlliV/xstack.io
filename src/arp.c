@@ -6,7 +6,7 @@
 #include "util.h"
 #include "logger.h"
 
-#define ARP_CACHE_AGE_MAX (20 * 60) /* TODO decent value */
+#define ARP_CACHE_AGE_MAX (20 * 60 * 60) /* Expiration time */
 
 struct arp_cache_entry {
     in_addr_t ip_addr;
@@ -60,7 +60,7 @@ int arp_cache_insert(in_addr_t ip_addr, mac_addr_t haddr,
             entry = it;
         }
         if (it->ip_addr == ip_addr) {
-            /* This is a replacement */
+            /* This is a replacement for an existing entry. */
             entry = it;
             break;
         }
@@ -143,29 +143,27 @@ static void arp_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bs
     struct arp_ip * arp_net = (struct arp_ip *)payload;
     struct arp_ip arp;
 
-    LOG(LOG_DEBUG, "arp handler");
-
     arp_ntoh(arp_net, &arp);
 
     if (arp.arp_htype != ARP_HTYPE_ETHER) {
-        return; /* TODO Error handling */
+        return;
     }
 
     if (arp.arp_ptype == ETHER_PROTO_IPV4) {
         char str_ip[IP_STR_LEN];
 
-        LOG(LOG_DEBUG, "ARP ipv4, op:%d", arp.arp_oper);
+        /* Add sender to the ARP cache */
+        arp_cache_insert(arp.arp_spa, arp.arp_sha, ARP_CACHE_DYN);
 
+        /* Process the opcode */
         switch (arp.arp_oper) {
         case ARP_OPER_REQUEST:
             ip2str(arp.arp_tpa, str_ip);
             LOG(LOG_DEBUG, "ARP request: %s", str_ip);
 
             if (arp.arp_tpa == ip_local_addr) {
-                LOG(LOG_DEBUG, "ARP REQ match");
-
                 arp_net->arp_oper = htons(ARP_OPER_REPLY);
-                memcpy(arp_net->arp_sha, arp.arp_tha, sizeof(mac_addr_t));
+                ether_handle2addr(ip_local_ether_handle, arp_net->arp_sha);
                 memcpy(arp_net->arp_tha, arp.arp_sha, sizeof(mac_addr_t));
                 arp_net->arp_tpa = arp_net->arp_spa;
                 arp_net->arp_spa = htonl(ip_local_addr);
@@ -177,14 +175,13 @@ static void arp_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bs
             }
             break;
         case ARP_OPER_REPLY:
-            /* TODO handle ARP repply */
-            LOG(LOG_DEBUG, "ARP REPLY");
+            /* Nothing more to do. */
         default:
-            /* TODO Error handling */
+            LOG(LOG_WARN, "Invalid ARP op: %d", arp.arp_oper);
             return;
         }
-    } else { /* TODO Error handling */
-                LOG(LOG_DEBUG, "ARP Unkn");
+    } else {
+        LOG(LOG_DEBUG, "Unknown ptype");
     }
 }
 ETHER_PROTO_INPUT_HANDLER(ETHER_PROTO_ARP, arp_input);

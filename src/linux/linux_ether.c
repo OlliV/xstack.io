@@ -90,6 +90,16 @@ static int linux_ether_bind(struct ether_linux * eth)
     return 0;
 }
 
+static int linux_ether_set_rxtimeout(struct ether_linux * eth)
+{
+    struct timeval tv = {
+        .tv_sec = XSTACK_PERIODIC_EVENT_SEC,
+    };
+
+    return setsockopt(eth->el_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,
+                      sizeof(struct timeval));
+}
+
 int ether_init(char * const args[])
 {
     const int handle = ether_next_handle;
@@ -142,6 +152,10 @@ int ether_init(char * const args[])
     }
 
     if (linux_ether_bind(eth)) {
+        goto fail;
+    }
+
+    if (linux_ether_set_rxtimeout(eth)) {
         goto fail;
     }
 
@@ -230,7 +244,9 @@ int ether_receive(int handle, struct ether_hdr * hdr, uint8_t * buf,
 
     do {
         retval = (int)recvfrom(eth->el_fd, frame, sizeof(frame), 0, NULL, NULL);
-        if (retval == -1) {
+        if (retval == -1 &&  (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINPROGRESS)) {
+            return 0;
+        } else if (retval == -1) {
             return -1;
         }
     } while (!memcmp(frame_hdr->h_src, eth->el_mac, sizeof(mac_addr_t)));
