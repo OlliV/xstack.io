@@ -51,6 +51,10 @@ int arp_cache_insert(in_addr_t ip_addr, const mac_addr_t haddr,
     struct arp_cache_entry * it;
     struct arp_cache_entry * entry = NULL;
 
+    if (ip_addr == 0) {
+        return 0;
+    }
+
     it = arp_cache;
     for (i = 0; i < num_elem(arp_cache); i++) {
         if (it->age == ARP_CACHE_FREE) {
