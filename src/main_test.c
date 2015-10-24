@@ -40,6 +40,9 @@ int main(void)
         exit(1);
     }
 
+    ip_send(167772161, 167772162, IP_PROTO_SCTP,
+            (uint8_t *)"test", 5);
+
     while (1) {
         struct ether_hdr hdr;
         int retval;

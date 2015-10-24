@@ -45,7 +45,7 @@ static int icmp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bs
 
         return msg_size;
     default:
-        LOG(LOG_WARN, "Unkown ICMP message type");
+        LOG(LOG_INFO, "Unkown ICMP message type");
 
         errno = ENOMSG;
         return -1;

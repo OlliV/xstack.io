@@ -7,6 +7,7 @@
 #include "xstack_in.h"
 #include "xstack_ip.h"
 
+#include "ip_defer.h"
 #include "logger.h"
 
 SET_DECLARE(_ip_proto_handlers, struct _ip_proto_handler);
@@ -191,7 +192,7 @@ static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsiz
         }
         return retval;
     } else {
-        LOG(LOG_WARN, "Unsupported protocol");
+        LOG(LOG_INFO, "Unsupported protocol");
 
         errno = EPROTONOSUPPORT;
         return -1;
@@ -216,6 +217,17 @@ int ip_send(in_addr_t src, in_addr_t dst, uint8_t proto,
     struct ip_hdr * hdr = (struct ip_hdr *)packet;
 
     if (arp_cache_get_haddr(dst, dst_mac)) {
+        if (errno == EHOSTUNREACH) {
+            int retval;
+            /*
+             * We must defer the operation for now because we are waiting for
+             * the reveiver's MAC addr to be resolved.
+             */
+            retval = ip_defer_push(src, dst, proto, buf, bsize);
+            if (retval == 0 || (retval == -1 && errno == EALREADY)) {
+                return 0; /* Return 0 to indicate an defered operation. */
+            } /* else an error occured. */
+        }
         return -1;
     }
 

@@ -6,6 +6,7 @@
 #include "xstack_ip.h"
 #include "xstack_util.h"
 
+#include "ip_defer.h"
 #include "logger.h"
 #include "tree.h"
 
@@ -127,12 +128,10 @@ int arp_cache_get_haddr(in_addr_t ip_addr, mac_addr_t haddr)
     }
 
     /* TODO Loop through each interface? */
-    /* TODO How to wait for the reply? */
     if (!arp_request(ip_local_ether_handle, ip_local_addr, ip_addr)) {
-        //return 0;
+        errno = EHOSTUNREACH;
     }
 
-    errno = EHOSTUNREACH;
     return -1;
 }
 
@@ -170,6 +169,9 @@ static int arp_input(const struct ether_hdr * hdr __unused, uint8_t * payload,
 
         /* Add sender to the ARP cache */
         arp_cache_insert(arp.arp_spa, arp.arp_sha, ARP_CACHE_DYN);
+
+        /* Check for deferred IP packet transmissions */
+        ip_defer_handler(0);
 
         /* Process the opcode */
         switch (arp.arp_oper) {
@@ -226,8 +228,11 @@ static int arp_request(int ether_handle, in_addr_t spa, in_addr_t tpa)
     memset(msg.arp_tha, 0, sizeof(mac_addr_t));
 
     arp_hton(&msg, &msg);
-    return ether_send(ether_handle, mac_broadcast_addr, ETHER_PROTO_ARP,
-                      (uint8_t *)(&msg), sizeof(msg));
+    if (ether_send(ether_handle, mac_broadcast_addr, ETHER_PROTO_ARP,
+                   (uint8_t *)(&msg), sizeof(msg)) == -1) {
+        return -1;
+    }
+    return 0;
 }
 
 int arp_gratuitous(int ether_handle, in_addr_t spa)
@@ -241,7 +246,6 @@ int arp_gratuitous(int ether_handle, in_addr_t spa)
         .arp_spa = spa,
         .arp_tpa = spa,
     };
-    int retval;
     char str_ip[IP_STR_LEN];
 
     ether_handle2addr(ether_handle, msg.arp_sha);
@@ -251,14 +255,13 @@ int arp_gratuitous(int ether_handle, in_addr_t spa)
     LOG(LOG_DEBUG, "Announce %s", str_ip);
 
     arp_hton(&msg, &msg);
-    retval = ether_send(ether_handle, mac_broadcast_addr, ETHER_PROTO_ARP,
-                        (uint8_t *)(&msg), sizeof(msg));
-    if (retval == -1) {
+    if (ether_send(ether_handle, mac_broadcast_addr, ETHER_PROTO_ARP,
+                   (uint8_t *)(&msg), sizeof(msg)) == -1) {
         char errmsg[40];
 
         strerror_r(errno, errmsg, sizeof(errmsg));
-        LOG(LOG_WARN, "Failed to announce %s: %s (%d)", str_ip, errmsg, retval);
+        LOG(LOG_WARN, "Failed to announce %s: %s", str_ip, errmsg);
     }
 
-    return retval;
+    return 0;
 }
