@@ -67,7 +67,7 @@ struct ip_hdr {
 
 struct _ip_proto_handler {
     uint16_t proto_id;
-    void (*fn)(const struct ip_hdr * hdr, uint8_t * payload, size_t bsize);
+    int (*fn)(const struct ip_hdr * hdr, uint8_t * payload, size_t bsize);
 };
 
 /**

@@ -179,6 +179,40 @@ void ether_deinit(int handle)
     close(eth->el_fd);
 }
 
+int ether_receive(int handle, struct ether_hdr * hdr, uint8_t * buf,
+                  size_t bsize)
+{
+    struct ether_linux * eth;
+    uint8_t frame[ETHER_MAXLEN] __attribute__ ((aligned));
+    struct ether_hdr * frame_hdr = (struct ether_hdr *)frame;
+    int retval;
+
+    assert(hdr != NULL);
+    assert(buf != NULL);
+
+    if (!(eth = ether_handle2eth(handle))) {
+        return -1;
+    }
+
+    do {
+        retval = (int)recvfrom(eth->el_fd, frame, sizeof(frame), 0, NULL, NULL);
+        if (retval == -1 &&  (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINPROGRESS)) {
+            return 0;
+        } else if (retval == -1) {
+            return -1;
+        }
+    } while (!memcmp(frame_hdr->h_src, eth->el_mac, sizeof(mac_addr_t)));
+
+    memcpy(hdr->h_dst, frame_hdr->h_dst, sizeof(mac_addr_t));
+    memcpy(hdr->h_src, frame_hdr->h_src, sizeof(mac_addr_t));
+    hdr->h_proto = ntohs(frame_hdr->h_proto);
+
+    retval -= ETHER_HEADER_LEN;
+    memcpy(buf, frame + ETHER_HEADER_LEN, min(retval, bsize));
+
+    return retval;
+}
+
 int ether_send(int handle, const mac_addr_t dst, uint16_t proto,
                uint8_t * buf, size_t bsize)
 {
@@ -228,37 +262,4 @@ int ether_send(int handle, const mac_addr_t dst, uint16_t proto,
     return (int)sendto(eth->el_fd, frame, frame_size, 0,
                        (struct sockaddr *)(&socket_address),
                        sizeof(socket_address));
-}
-
-int ether_receive(int handle, struct ether_hdr * hdr, uint8_t * buf,
-                  size_t bsize)
-{
-    struct ether_linux * eth;
-    uint8_t frame[ETHER_MAXLEN] __attribute__ ((aligned));
-    struct ether_hdr * frame_hdr = (struct ether_hdr *)frame;
-    int retval;
-
-    assert(hdr != NULL);
-    assert(buf != NULL);
-
-    if (!(eth = ether_handle2eth(handle))) {
-        return -1;
-    }
-
-    do {
-        retval = (int)recvfrom(eth->el_fd, frame, sizeof(frame), 0, NULL, NULL);
-        if (retval == -1 &&  (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINPROGRESS)) {
-            return 0;
-        } else if (retval == -1) {
-            return -1;
-        }
-    } while (!memcmp(frame_hdr->h_src, eth->el_mac, sizeof(mac_addr_t)));
-
-    memcpy(hdr->h_dst, frame_hdr->h_dst, sizeof(mac_addr_t));
-    memcpy(hdr->h_src, frame_hdr->h_src, sizeof(mac_addr_t));
-    hdr->h_proto = ntohs(frame_hdr->h_proto);
-
-    memcpy(buf, frame + ETHER_HEADER_LEN, min(retval, bsize));
-
-    return retval;
 }

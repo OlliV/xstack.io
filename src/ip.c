@@ -111,7 +111,7 @@ static void ip_ntoh(struct ip_hdr * net, struct ip_hdr * host)
     host->ip_dst = ntohl(net->ip_dst);
 }
 
-static void ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize)
+static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize)
 {
     struct ip_hdr * ip = (struct ip_hdr *)payload;
     struct _ip_proto_handler ** tmpp;
@@ -122,13 +122,13 @@ static void ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsi
 
     if ((ip->ip_vhl & 0x40) != 0x40) {
         LOG(LOG_ERR, "Unsupported IP packet version: 0x%x", ip->ip_vhl);
-        return;
+        return 0;
     }
 
     hlen = ip_hdr_hlen(ip);
     if (hlen < 20 || ip->ip_len > bsize) {
         LOG(LOG_ERR, "Incorrect packet header length: %d", (int)hlen);
-        return;
+        return 0;
     }
 
     /*
@@ -143,7 +143,7 @@ static void ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsi
 
     if (ip->ip_tos != IP_TOS_DEFAULT) {
         LOG(LOG_ERR, "Unsupported IP type of service or ECN: 0x%x", ip->ip_tos);
-        return;
+        return 0;
     }
 
     if (ip->ip_dst != ip_local_addr) { /* TODO multiple IPs */
@@ -152,10 +152,10 @@ static void ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsi
         if (XSTACK_IP_SEND_HOSTUNREAC) {
             /* TODO Send hostunreac */
         }
-        return;
+        return 0;
     }
 
-    /* Insert to ARP table so it's possible/faster to send a repply. */
+    /* Insert to ARP table so it's possible/faster to send a reply. */
     arp_cache_insert(ip->ip_src, hdr->h_src, ARP_CACHE_DYN);
 
     SET_FOREACH(tmpp, _ip_proto_handlers) {
@@ -169,11 +169,34 @@ static void ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsi
     LOG(LOG_DEBUG, "proto id: 0x%x", ip->ip_proto);
 
     if (proto) {
+        int retval;
+
         /* RFE Support fragments and use hlen + ip->ip_len? */
-        proto->fn(ip, payload + hlen, bsize - hlen);
+        retval = proto->fn(ip, payload + hlen, bsize - hlen);
+        if (retval > 0) {
+            in_addr_t tmp;
+
+            /* Swap source and destination. */
+            tmp = ip->ip_src;
+            ip->ip_src = ip->ip_dst;
+            ip->ip_dst = tmp;
+
+            retval += ip_hdr_hlen(ip);
+            ip->ip_len = retval;
+
+            /* Back to network order */
+            ip_hton(ip, ip);
+            ip->ip_csum = 0;
+            ip->ip_csum = ip_checksum(ip, sizeof(struct ip_hdr));
+        }
+        return retval;
     } else {
         LOG(LOG_WARN, "Unsupported protocol");
+
+        errno = EPROTONOSUPPORT;
+        return -1;
     }
+    return 0;
 }
 ETHER_PROTO_INPUT_HANDLER(ETHER_PROTO_IPV4, ip_input);
 
@@ -203,7 +226,7 @@ int ip_send(in_addr_t src, in_addr_t dst, uint8_t proto,
     hdr->ip_proto = proto;
     memcpy(packet + sizeof(ip_hdr_template), buf, bsize);
     ip_hton(hdr, hdr);
-    hdr->ip_csum = ip_checksum(hdr, sizeof(ip_hdr_template));
+    hdr->ip_csum = ip_checksum(hdr, sizeof(struct ip_hdr));
 
     /* TODO Multi interface support */
     return ether_send(ip_local_ether_handle, dst_mac, ETHER_PROTO_IPV4, packet,

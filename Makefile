@@ -4,6 +4,8 @@ CCFLAGS += -include config.h
 
 SRC := src/linux/linux_ether.c $(wildcard src/*.c)
 
+all: inetd doc
+
 doc:
 	doxygen
 	cd latex && make
@@ -14,6 +16,6 @@ inetd: $(SRC)
 
 clean:
 	$(RM) inetd
-	$(RM) latex
+	$(RM) -r latex
 
 .PHONY: clean doc

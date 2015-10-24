@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <string.h>
 
 #include "xstack_icmp.h"
@@ -19,7 +20,7 @@ static void icmp_ntoh(struct icmp * net, struct icmp * host)
     host->icmp_csum  = net->icmp_csum;
 }
 
-void icmp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsize)
+static int icmp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsize)
 {
     struct icmp * net_msg = (struct icmp *)payload;
     struct icmp hdr;
@@ -27,7 +28,9 @@ void icmp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsize)
 
     if (bsize < sizeof(struct icmp)) {
         LOG(LOG_ERR, "Invalid ICMP message size");
-        return;
+
+        errno = EBADMSG;
+        return -1;
     }
 
     icmp_ntoh(net_msg, &hdr);
@@ -40,11 +43,12 @@ void icmp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsize)
         net_msg->icmp_csum = 0;
         net_msg->icmp_csum = ip_checksum(net_msg, msg_size);
 
-        ip_send(ip_hdr->ip_dst, ip_hdr->ip_src, IP_PROTO_ICMP, payload, msg_size);
-        break;
+        return msg_size;
     default:
         LOG(LOG_WARN, "Unkown ICMP message type");
-        return;
+
+        errno = ENOMSG;
+        return -1;
     }
 }
 IP_PROTO_INPUT_HANDLER(IP_PROTO_ICMP, icmp_input);

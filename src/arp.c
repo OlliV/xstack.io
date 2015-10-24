@@ -152,7 +152,7 @@ static void arp_cache_update(int delta_time)
 }
 IP_PERIODIC_TASK(arp_cache_update);
 
-static void arp_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize)
+static int arp_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize)
 {
     struct arp_ip * arp_net = (struct arp_ip *)payload;
     struct arp_ip arp;
@@ -160,7 +160,8 @@ static void arp_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bs
     arp_ntoh(arp_net, &arp);
 
     if (arp.arp_htype != ARP_HTYPE_ETHER) {
-        return;
+        errno = EPROTOTYPE;
+        return -1;
     }
 
     if (arp.arp_ptype == ETHER_PROTO_IPV4) {
@@ -182,10 +183,7 @@ static void arp_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bs
                 arp_net->arp_tpa = arp_net->arp_spa;
                 arp_net->arp_spa = htonl(ip_local_addr);
 
-                if (ether_send(ip_local_ether_handle, hdr->h_src,
-                               ETHER_PROTO_ARP, payload, bsize) < 0) {
-                    LOG(LOG_WARN, "ARP reply failed");
-                }
+                return bsize;
             }
             break;
         case ARP_OPER_REPLY:
@@ -197,7 +195,11 @@ static void arp_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bs
         }
     } else {
         LOG(LOG_DEBUG, "Unknown ptype");
+
+        errno = EPROTOTYPE;
+        return -1;
     }
+    return 0;
 }
 ETHER_PROTO_INPUT_HANDLER(ETHER_PROTO_ARP, arp_input);
 

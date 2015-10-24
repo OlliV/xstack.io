@@ -50,7 +50,15 @@ int main(void)
             perror("Rx failed");
         } else if (retval > 0) {
             printf("Frame received!\n");
-            ether_input(&hdr, rx_buffer, retval);
+            retval = ether_input(&hdr, rx_buffer, retval);
+            if (retval == -1) {
+                perror("Protocol handling failed");
+            } else if (retval > 0) {
+                retval = ether_output_reply(handle, &hdr, rx_buffer, retval);
+                if (retval < 0) {
+                    perror("Reply failed");
+                }
+            }
         }
 
         if (eval_timer()) {
