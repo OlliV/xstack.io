@@ -1,5 +1,11 @@
+/**
+ * @addtogroup XSTACK_CONFIG
+ * @{
+ */
+
 #ifndef CONFIG_H
 #define CONFIG_H
+
 
 /**
  * Periodic IP event tick.
@@ -33,8 +39,8 @@
 
 /**
  * Unreachable destination IP.
- * 0 = Drop silently
- * 1 = Send ICMP Destination host unreachable
+ * + 0 = Drop silently
+ * + 1 = Send ICMP Destination host unreachable
  */
 #define XSTACK_IP_SEND_HOSTUNREAC   1
 
@@ -43,3 +49,7 @@
  */
 
 #endif /* CONFIG_H */
+
+/**
+ * @}
+ */

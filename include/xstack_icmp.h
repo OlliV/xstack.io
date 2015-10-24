@@ -1,3 +1,8 @@
+/**
+ * @addtogroup ICMP
+ * @{
+ */
+
 #ifndef XSTACK_ICMP_H
 #define XSTACK_ICMP_H
 
@@ -40,3 +45,7 @@ struct icmp {
  */
 
 #endif /* XSTACK_ICMP_H */
+
+/**
+ * @}
+ */

@@ -1,3 +1,8 @@
+/**
+ * @addtogroup ARP
+ * @{
+ */
+
 #ifndef XSTACK_ARP_H
 #define XSTACK_ARP_H
 
@@ -66,3 +71,7 @@ int arp_cache_get_haddr(in_addr_t ip_addr, mac_addr_t haddr);
 int arp_gratuitous(int ether_handle, in_addr_t spa);
 
 #endif /* XSTACK_ARP_H */
+
+/**
+ * @}
+ */

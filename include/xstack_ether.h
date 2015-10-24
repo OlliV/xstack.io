@@ -1,3 +1,8 @@
+/**
+ * @addtogroup Ether
+ * @{
+ */
+
 #ifndef XSTACK_ETHER_H
 #define XSTACK_ETHER_H
 
@@ -7,27 +12,32 @@
 #include "linker_set.h"
 #include "xstack_link.h"
 
-/*
+/**
+ * Ethernet frame
+ * @verbatim
  * +---------+---------+---------+-----------+-----+
  * | dst MAC | src MAC | Type ID | Data      | FCS |
  * +---------+---------+---------+-----------+-----+
  *  6         6         2         45 - 1500
  * |-----------------------------|-----------------|
  *          Datalink header         Data and CRC
+ * @endverbatim
+ * @{
  */
-
 #define ETHER_ALEN                 LINK_MAC_ALEN
 #define ETHER_HEADER_LEN          14
 #define ETHER_DATA_LEN          1500    /*!< Max length of data */
 #define ETHER_FCS_LEN              4
 #define ETHER_MINLEN              60
 #define ETHER_MAXLEN            1514
+/**
+ * @}
+ */
 
 /**
  * Protocol type IDs.
  * @{
  */
-
 #define ETHER_PROTO_LOOP        0x0060 /*!< Loopback */
 #define ETHER_PROTO_IPV4        0x0800 /*!< IPv4 */
 #define ETHER_PROTO_ARP         0x0806 /*!< Address Resolution Protocol */
@@ -35,7 +45,6 @@
 #define ETHER_PROTO_WOL         0x0842 /*!< Wake-on-LAN */
 #define ETHER_PROTO_8021Q       0x8100 /*!< VLAN-tagged frame */
 #define ETHER_PROTO_IPV6        0x86DD /*!< IPv6 */
-
 /**
  * @}
  */
@@ -106,3 +115,7 @@ int ether_receive(int handle, struct ether_hdr * hdr, uint8_t * buf,
 void ether_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize);
 
 #endif /* XSTACK_ETHER_H */
+
+/**
+ * @}
+ */

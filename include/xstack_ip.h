@@ -1,3 +1,8 @@
+/**
+ * @addtogroup IP
+ * @{
+ */
+
 #ifndef XSTACK_IP_H
 #define XSTACK_IP_H
 
@@ -36,6 +41,7 @@ struct ip_hdr {
 
 /**
  * IP Packet Header Defaults
+ * @{
  */
 /* v4 and 5 * 4 octets */
 #define IP_VHL_DEFAULT  0x45    /*!< Default value for version and ihl. */
@@ -114,3 +120,7 @@ int ip_send(in_addr_t src, in_addr_t dst, uint8_t proto,
 void ip_run_periodic_tasks(int delta_time);
 
 #endif /* XSTACK_IP_H */
+
+/**
+ * @}
+ */
