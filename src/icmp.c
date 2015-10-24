@@ -8,8 +8,6 @@ static void icmp_hton(struct icmp * host, struct icmp * net)
     net->icmp_type  = host->icmp_type;
     net->icmp_code  = host->icmp_code;
     net->icmp_csum  = host->icmp_csum;
-    net->icmp_id    = htons(host->icmp_id);
-    net->icmp_seqno = htons(host->icmp_seqno);
 }
 
 static void icmp_ntoh(struct icmp * net, struct icmp * host)
@@ -17,8 +15,6 @@ static void icmp_ntoh(struct icmp * net, struct icmp * host)
     host->icmp_type  = net->icmp_type;
     host->icmp_code  = net->icmp_code;
     host->icmp_csum  = net->icmp_csum;
-    host->icmp_id    = htons(net->icmp_id);
-    host->icmp_seqno = htons(net->icmp_seqno);
 }
 
 void icmp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsize)
@@ -26,6 +22,11 @@ void icmp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsize)
     struct icmp * net_msg = (struct icmp *)payload;
     struct icmp hdr;
     size_t msg_size;
+
+    if (bsize < sizeof(struct icmp)) {
+        LOG(LOG_ERR, "Invalid ICMP message size");
+        return;
+    }
 
     icmp_ntoh(net_msg, &hdr);
     msg_size = ip_hdr->ip_len - ip_hdr_hlen(ip_hdr);

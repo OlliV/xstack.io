@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include "xstack_ether.h"
 #include "../util.h"
+#include "../logger.h"
 
 #define DEFAULT_IF      "eth0"
 #define ETHER_MAX_IF    1
@@ -192,6 +193,11 @@ int ether_send(int handle, const mac_addr_t dst, uint16_t proto,
 
     assert(buf != NULL);
 
+    if (frame_size > ETHER_MAXLEN) {
+        errno = EMSGSIZE;
+        return -1;
+    }
+
     if (!(eth = ether_handle2eth(handle))) {
         return -1;
     }
@@ -208,11 +214,6 @@ int ether_send(int handle, const mac_addr_t dst, uint16_t proto,
         .sll_addr[4] = dst[4],
         .sll_addr[5] = dst[5],
     };
-
-    if (frame_size > ETHER_MAXLEN) {
-        errno = EMSGSIZE;
-        return -1;
-    }
 
     memcpy(frame_hdr->h_dst, dst, ETHER_ALEN);
     memcpy(frame_hdr->h_src, eth->el_mac, ETHER_ALEN);
@@ -254,6 +255,7 @@ int ether_receive(int handle, struct ether_hdr * hdr, uint8_t * buf,
     memcpy(hdr->h_dst, frame_hdr->h_dst, sizeof(mac_addr_t));
     memcpy(hdr->h_src, frame_hdr->h_src, sizeof(mac_addr_t));
     hdr->h_proto = ntohs(frame_hdr->h_proto);
+
     memcpy(buf, frame + ETHER_HEADER_LEN, min(retval, bsize));
 
     return retval;
