@@ -1,10 +1,12 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+
 #include "xstack_arp.h"
 #include "xstack_ether.h"
 #include "xstack_in.h"
 #include "xstack_ip.h"
+
 #include "logger.h"
 
 SET_DECLARE(_ip_proto_handlers, struct _ip_proto_handler);

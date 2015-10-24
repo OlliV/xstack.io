@@ -1,10 +1,13 @@
 #include <errno.h>
 #include <string.h>
+
 #include "xstack_arp.h"
 #include "xstack_ether.h"
 #include "xstack_ip.h"
-#include "util.h"
+#include "xstack_util.h"
+
 #include "logger.h"
+#include "tree.h"
 
 #define ARP_CACHE_AGE_MAX (20 * 60 * 60) /* Expiration time */
 
@@ -12,9 +15,19 @@ struct arp_cache_entry {
     in_addr_t ip_addr;
     mac_addr_t haddr;
     int age;
+    RB_ENTRY(arp_cache_entry) _entry;
 };
 
-static struct arp_cache_entry arp_cache[10]; /* TODO Configurable size */
+static struct arp_cache_entry arp_cache[XSTACK_ARP_CACHE_SIZE];
+static RB_HEAD(arp_cache_tree, arp_cache_entry) arp_cache_head =
+    RB_INITIALIZER(_head);
+
+static int arp_cache_cmp(struct arp_cache_entry * a, struct arp_cache_entry * b)
+{
+    return a->ip_addr - b->ip_addr;
+}
+
+RB_GENERATE_STATIC(arp_cache_tree, arp_cache_entry, _entry, arp_cache_cmp);
 
 static int arp_request(int ether_handle, in_addr_t spa, in_addr_t tpa);
 
@@ -63,6 +76,7 @@ int arp_cache_insert(in_addr_t ip_addr, const mac_addr_t haddr,
                    (!entry && it->age >= 0)) {
             entry = it;
         }
+        /* TODO Use RB_FIND first */
         if (it->ip_addr == ip_addr) {
             /* This is a replacement for an existing entry. */
             entry = it;
@@ -73,35 +87,32 @@ int arp_cache_insert(in_addr_t ip_addr, const mac_addr_t haddr,
     if (!entry) {
         errno = ENOMEM;
         return -1;
+    } else if (entry->age >= 0) {
+        RB_REMOVE(arp_cache_tree, &arp_cache_head, entry);
     }
 
     entry->ip_addr = ip_addr;
     memcpy(entry->haddr, haddr, sizeof(mac_addr_t));
     entry->age = (int)type;
+    RB_INSERT(arp_cache_tree, &arp_cache_head, entry);
 
     return 0;
 }
 
 static struct arp_cache_entry * arp_cache_get_entry(in_addr_t ip_addr)
 {
-    size_t i;
-    struct arp_cache_entry * entry = NULL;
+    struct arp_cache_entry find = {
+        .ip_addr = ip_addr,
+    };
 
-    for (i = 0; i < num_elem(arp_cache); i++) {
-        entry = &arp_cache[i];
-
-        if (entry->ip_addr == ip_addr) {
-            break;
-        }
-    }
-
-    return entry;
+    return RB_FIND(arp_cache_tree, &arp_cache_head, &find);
 }
 
 void arp_cache_remove(in_addr_t ip_addr)
 {
     struct arp_cache_entry * entry = arp_cache_get_entry(ip_addr);
 
+    RB_REMOVE(arp_cache_tree, &arp_cache_head, entry);
     if (entry)
         entry->age = ARP_CACHE_FREE;
 }

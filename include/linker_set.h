@@ -35,18 +35,7 @@
 #ifndef _SYS_LINKER_SET_H_
 #define _SYS_LINKER_SET_H_
 
-#ifndef __GLOBL1
-#define  __GLOBL1(sym) __asm__(".globl " #sym)
-#define  __GLOBL(sym) __GLOBL1(sym)
-#endif
-
-#ifndef __used
-#define __used __attribute__((__used__))
-#endif
-
-#ifndef __section
-#define __section(x) __attribute__((__section__(x)))
-#endif
+#include "xstack_util.h"
 
 /*
  * The following macros are used to declare global sets of objects, which

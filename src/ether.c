@@ -1,4 +1,5 @@
 #include "xstack_ether.h"
+
 #include "logger.h"
 
 SET_DECLARE(_ether_proto_handlers, struct _ether_proto_handler);

@@ -8,6 +8,24 @@
  */
 #define XSTACK_PERIODIC_EVENT_SEC   10
 
+/**
+ * ARP Configuration.
+ * @{
+ */
+
+/**
+ * ARP Cache size.
+ * The size of ARP cache in entries.
+ * If ARP runs out of slots it will free the oldest validdynamic entry in
+ * the cache; if all entries all static and thus there is no more empty
+ * slots left the ARP insert will fail.
+ */
+#define XSTACK_ARP_CACHE_SIZE       50
+
+/**
+ * @}
+ */
+
 /*
  * @{
  * IP Configuration.
@@ -16,7 +34,7 @@
 /**
  * Unreachable destination IP.
  * 0 = Drop silently
- * 1 = Send ICMP Destination host unreachable.
+ * 1 = Send ICMP Destination host unreachable
  */
 #define XSTACK_IP_SEND_HOSTUNREAC   1
 

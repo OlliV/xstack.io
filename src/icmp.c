@@ -1,6 +1,8 @@
 #include <string.h>
+
 #include "xstack_icmp.h"
 #include "xstack_ip.h"
+
 #include "logger.h"
 
 static void icmp_hton(struct icmp * host, struct icmp * net)

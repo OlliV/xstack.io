@@ -1,5 +1,22 @@
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef XSTACK_UTIL_H
+#define XSTACK_UTIL_H
+
+#ifndef __GLOBL1
+#define  __GLOBL1(sym) __asm__(".globl " #sym)
+#define  __GLOBL(sym) __GLOBL1(sym)
+#endif
+
+#ifndef __used
+#define __used __attribute__((__used__))
+#endif
+
+#ifndef __unused
+#define __unused __attribute__((__unused__))
+#endif
+
+#ifndef __section
+#define __section(x) __attribute__((__section__(x)))
+#endif
 
 /**
  * Returns a container of ptr, which is a element in some struct.
@@ -37,4 +54,4 @@ static inline unsigned long ulmax(unsigned long a, unsigned long b)
 static inline unsigned long ulmin(unsigned long a, unsigned long b)
 { return (a < b ? a : b); }
 
-#endif
+#endif /* XSTACK_UTIL */

@@ -11,8 +11,10 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
 #include "xstack_ether.h"
-#include "../util.h"
+#include "xstack_util.h"
+
 #include "../logger.h"
 
 #define DEFAULT_IF      "eth0"
