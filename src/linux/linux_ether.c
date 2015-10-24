@@ -51,7 +51,7 @@ int ether_handle2addr(int handle, mac_addr_t addr)
     return 0;
 }
 
-int ether_addr2handle(const mac_addr_t addr)
+int ether_addr2handle(const mac_addr_t addr __unused)
 {
     return 0; /* TODO Implementation of ether_get_handle() */
 }

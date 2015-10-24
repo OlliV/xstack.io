@@ -152,7 +152,8 @@ static void arp_cache_update(int delta_time)
 }
 IP_PERIODIC_TASK(arp_cache_update);
 
-static int arp_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize)
+static int arp_input(const struct ether_hdr * hdr __unused, uint8_t * payload,
+                     size_t bsize)
 {
     struct arp_ip * arp_net = (struct arp_ip *)payload;
     struct arp_ip arp;
