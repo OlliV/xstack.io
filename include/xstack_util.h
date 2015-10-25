@@ -18,6 +18,9 @@
 #define __section(x) __attribute__((__section__(x)))
 #endif
 
+#define __constructor   __attribute__((constructor))
+#define __destructor    __attribute__((destructor))
+
 /**
  * Returns a container of ptr, which is a element in some struct.
  * @param ptr       is a pointer to a element in struct.

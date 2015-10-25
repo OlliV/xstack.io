@@ -12,14 +12,15 @@
 #define IP_STR_LEN  17
 
 /**
- * Local Default Interface
- * @{
+ * IP Route descriptor.
  */
-int ip_local_ether_handle;
-in_addr_t ip_local_addr;
-/**
- * @}
- */
+struct ip_route {
+    in_addr_t r_network;    /*!< Network address. */
+    in_addr_t r_netmask;    /*!< Network mask. */
+    in_addr_t r_gw;         /*!< Gateway IP. */
+    in_addr_t r_iface;      /*!< Interface address. */
+    int r_iface_handle;     /*!< Interface ether_handle. */
+};
 
 /**
  * IP Packet Header.
@@ -88,7 +89,12 @@ typedef void ip_periodic_task_t(int delta_time);
 #define IP_PERIODIC_TASK(_task_fn_) \
     DATA_SET(_ip_periodic_tasks, _task_fn_)
 
-int ip_config(int ether_handle, in_addr_t ip_addr);
+int ip_config(int ether_handle, in_addr_t ip_addr, in_addr_t netmask);
+
+/**
+ * IP Packet manipulation.
+ * @{
+ */
 
 /**
  * Convert an IP address from integer representation to a C string.
@@ -110,6 +116,45 @@ static inline size_t ip_hdr_hlen(const struct ip_hdr * ip)
 {
     return (ip->ip_vhl & 0x0f) * 4;
 }
+
+/**
+ * @}
+ */
+
+/**
+ * RIB
+ * @{
+ */
+
+/**
+ * Update a route.
+ * @param[in] route is a pointer to a route struct; the information will be
+ *                  copied from the struct.
+ */
+int ip_route_update(struct ip_route * route);
+
+/**
+ * Remove a route from routing table.
+ */
+int ip_route_remove(struct ip_route * route);
+
+/**
+ * Get routing information for a network.
+ * @param[out] route    is a pointer to a ip_route struct that will be updated
+ *                      if a route is found.
+ */
+int ip_route_fin_by_network(in_addr_t network, struct ip_route * route);
+
+/**
+ * Get routing information for a source IP addess.
+ * The function can be also used for source IP address validation by setting
+ * route pointer argument to NULL.
+ */
+int ip_route_find_by_iface(in_addr_t addr, struct ip_route * route);
+
+/**
+ * @}
+ */
 
 /**
  * Send an IP packet to a destination.

@@ -38,6 +38,18 @@
  */
 
 /**
+ * RIB (Routing Information Base) size in the number of entries.
+ */
+#define XSTACK_IP_RIB_SIZE          5
+
+/**
+ * Max number of deferred IP packets.
+ * Maximum number of IP packets waiting for transmission, ie. waiting for ARP
+ * to provide a destination MAC address.
+ */
+#define XSTACK_IP_DEFER_MAX         20
+
+/**
  * Unreachable destination IP.
  * + 0 = Drop silently
  * + 1 = Send ICMP Destination host unreachable

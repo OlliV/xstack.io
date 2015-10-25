@@ -13,21 +13,25 @@
 SET_DECLARE(_ip_proto_handlers, struct _ip_proto_handler);
 SET_DECLARE(_ip_periodic_tasks, void);
 
-int ip_local_ether_handle;
-in_addr_t ip_local_addr;
-
-/* TODO Mask */
-int ip_config(int ether_handle, in_addr_t ip_addr)
+int ip_config(int ether_handle, in_addr_t ip_addr, in_addr_t netmask)
 {
     mac_addr_t mac;
-
-    ip_local_ether_handle = ether_handle;
-    ip_local_addr = ip_addr;
+    struct ip_route route = {
+        .r_network = ip_addr & netmask,
+        .r_netmask = netmask,
+        .r_gw = 0, /* TODO GW support */
+        .r_iface = ip_addr,
+        .r_iface_handle = ether_handle,
+    };
 
     ether_handle2addr(ether_handle, mac);
     arp_cache_insert(ip_addr, mac, ARP_CACHE_STATIC);
+
+    ip_route_update(&route);
+
+    /* Announce that we are online. */
     for (size_t i = 0; i < 3; i++) {
-        arp_gratuitous(ether_handle, ip_local_addr);
+        arp_gratuitous(ether_handle, ip_addr);
     }
 
     return 0;
@@ -147,7 +151,7 @@ static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsiz
         return 0;
     }
 
-    if (ip->ip_dst != ip_local_addr) { /* TODO multiple IPs */
+    if (ip_route_find_by_iface(ip->ip_dst, NULL)) {
         LOG(LOG_WARN, "Invalid destination address");
 
         if (XSTACK_IP_SEND_HOSTUNREAC) {
@@ -215,8 +219,15 @@ int ip_send(in_addr_t src, in_addr_t dst, uint8_t proto,
     size_t packet_size = sizeof(struct ip_hdr) + bsize;
     uint8_t packet[packet_size];
     struct ip_hdr * hdr = (struct ip_hdr *)packet;
+    struct ip_route route;
 
-    if (arp_cache_get_haddr(dst, dst_mac)) {
+    if (ip_route_find_by_iface(src, &route)) {
+        LOG(LOG_ERR, "Invalid source address");
+        errno = ENXIO;
+        return -1;
+    }
+
+    if (arp_cache_get_haddr(route.r_iface, dst, dst_mac)) {
         if (errno == EHOSTUNREACH) {
             int retval;
             /*
@@ -240,7 +251,6 @@ int ip_send(in_addr_t src, in_addr_t dst, uint8_t proto,
     ip_hton(hdr, hdr);
     hdr->ip_csum = ip_checksum(hdr, sizeof(struct ip_hdr));
 
-    /* TODO Multi interface support */
-    return ether_send(ip_local_ether_handle, dst_mac, ETHER_PROTO_IPV4, packet,
+    return ether_send(route.r_iface_handle, dst_mac, ETHER_PROTO_IPV4, packet,
                       packet_size);
 }

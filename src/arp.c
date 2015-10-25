@@ -118,17 +118,18 @@ void arp_cache_remove(in_addr_t ip_addr)
         entry->age = ARP_CACHE_FREE;
 }
 
-int arp_cache_get_haddr(in_addr_t ip_addr, mac_addr_t haddr)
+int arp_cache_get_haddr(in_addr_t iface, in_addr_t ip_addr, mac_addr_t haddr)
 {
     struct arp_cache_entry * entry = arp_cache_get_entry(ip_addr);
+    struct ip_route route;
 
     if (entry && entry->age >= 0) {
         memcpy(haddr, entry->haddr, sizeof(mac_addr_t));
         return 0;
     }
 
-    /* TODO Loop through each interface? */
-    if (!arp_request(ip_local_ether_handle, ip_local_addr, ip_addr)) {
+    if (!ip_route_find_by_iface(iface, &route) &&
+        !arp_request(route.r_iface_handle, route.r_iface, ip_addr)) {
         errno = EHOSTUNREACH;
     }
 
@@ -165,6 +166,7 @@ static int arp_input(const struct ether_hdr * hdr __unused, uint8_t * payload,
     }
 
     if (arp.arp_ptype == ETHER_PROTO_IPV4) {
+        struct ip_route route;
         char str_ip[IP_STR_LEN];
 
         /* Add sender to the ARP cache */
@@ -179,12 +181,12 @@ static int arp_input(const struct ether_hdr * hdr __unused, uint8_t * payload,
             ip2str(arp.arp_tpa, str_ip);
             LOG(LOG_DEBUG, "ARP request: %s", str_ip);
 
-            if (arp.arp_tpa == ip_local_addr) {
+            if (!ip_route_find_by_iface(arp.arp_tpa, &route)) {
                 arp_net->arp_oper = htons(ARP_OPER_REPLY);
-                ether_handle2addr(ip_local_ether_handle, arp_net->arp_sha);
+                ether_handle2addr(route.r_iface_handle, arp_net->arp_sha);
                 memcpy(arp_net->arp_tha, arp.arp_sha, sizeof(mac_addr_t));
                 arp_net->arp_tpa = arp_net->arp_spa;
-                arp_net->arp_spa = htonl(ip_local_addr);
+                arp_net->arp_spa = htonl(route.r_iface);
 
                 return bsize;
             }

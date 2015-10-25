@@ -35,7 +35,7 @@ int main(void)
         exit(1);
     }
 
-    if (ip_config(handle, 167772161)) {
+    if (ip_config(handle, 167772161, 4294967040)) {
         perror("Failed to config IP");
         exit(1);
     }

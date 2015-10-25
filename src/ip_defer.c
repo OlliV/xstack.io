@@ -22,7 +22,7 @@ struct ip_defer {
  */
 static unsigned defer_inhibit;
 
-static struct ip_defer ip_defer_queue[20];
+static struct ip_defer ip_defer_queue[XSTACK_IP_DEFER_MAX];
 static size_t q_rd, q_wr;
 
 int ip_defer_push(in_addr_t src, in_addr_t dst, uint8_t proto,
