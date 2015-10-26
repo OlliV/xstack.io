@@ -130,21 +130,34 @@ int ip_route_remove(struct ip_route * route)
     return 0;
 }
 
-int ip_route_find_by_network(in_addr_t ip, in_addr_t mask, struct ip_route * route)
+int ip_route_find_by_network(in_addr_t addr, struct ip_route * route)
 {
     struct ip_route find[] = {
-        { .r_network = ip },        /* first we try exact match, */
-        { .r_network = ip & mask }, /* then the network, */
-        { .r_network = 0 }          /* and finally looup for default gw. */
+        { .r_network = addr },
+        { .r_network = 0 }
     };
     struct ip_route_entry * entry = NULL;
-    size_t i;
 
-    for (i = 0; i < num_elem(find) && !entry; i++) {
+    switch (0) {
+    case 0: /* First we try exact match */
         entry = RB_FIND(rib_routetree, &rib_routetree,
-                        (struct ip_route_entry *)(find + i));
+                        (struct ip_route_entry *)(&find));
+        if (entry)
+            goto match;
+    case 1: /* Then with network masks */
+        RB_FOREACH(entry, rib_routetree, &rib_routetree) {
+            if (entry->route.r_network == (addr & entry->route.r_netmask)) {
+                goto match;
+            }
+        }
+    default: /* And finally we check if there is a default gw */
+        entry = RB_FIND(rib_routetree, &rib_routetree,
+                        (struct ip_route_entry *)(find + 1));
+        if (entry)
+            goto match;
     }
 
+match:
     if (!entry) {
         errno = ENOENT;
         return -1;

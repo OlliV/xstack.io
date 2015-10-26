@@ -212,8 +212,7 @@ static struct ip_hdr ip_hdr_template = {
     .ip_ttl = IP_TTL_DEFAULT,
 };
 
-int ip_send(in_addr_t src, in_addr_t dst, uint8_t proto,
-            const uint8_t * buf, size_t bsize)
+int ip_send(in_addr_t dst, uint8_t proto, const uint8_t * buf, size_t bsize)
 {
     mac_addr_t dst_mac;
     size_t packet_size = sizeof(struct ip_hdr) + bsize;
@@ -221,9 +220,9 @@ int ip_send(in_addr_t src, in_addr_t dst, uint8_t proto,
     struct ip_hdr * hdr = (struct ip_hdr *)packet;
     struct ip_route route;
 
-    if (ip_route_find_by_iface(src, &route)) {
-        LOG(LOG_ERR, "Invalid source address");
-        errno = ENXIO;
+    if (ip_route_find_by_network(dst, &route)) {
+        LOG(LOG_ERR, "No route to host");
+        errno = EHOSTUNREACH;
         return -1;
     }
 
@@ -234,7 +233,7 @@ int ip_send(in_addr_t src, in_addr_t dst, uint8_t proto,
              * We must defer the operation for now because we are waiting for
              * the reveiver's MAC addr to be resolved.
              */
-            retval = ip_defer_push(src, dst, proto, buf, bsize);
+            retval = ip_defer_push(dst, proto, buf, bsize);
             if (retval == 0 || (retval == -1 && errno == EALREADY)) {
                 return 0; /* Return 0 to indicate an defered operation. */
             } /* else an error occured. */
@@ -244,7 +243,7 @@ int ip_send(in_addr_t src, in_addr_t dst, uint8_t proto,
 
     memcpy(hdr, &ip_hdr_template, sizeof(ip_hdr_template));
     hdr->ip_len = packet_size;
-    hdr->ip_src = src;
+    hdr->ip_src = route.r_iface;
     hdr->ip_dst = dst;
     hdr->ip_proto = proto;
     memcpy(packet + sizeof(ip_hdr_template), buf, bsize);

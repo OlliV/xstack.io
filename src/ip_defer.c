@@ -9,7 +9,6 @@
 
 struct ip_defer {
     int tries;
-    in_addr_t src;
     in_addr_t dst;
     uint8_t proto;
     size_t buf_size;
@@ -25,7 +24,7 @@ static unsigned defer_inhibit;
 static struct ip_defer ip_defer_queue[XSTACK_IP_DEFER_MAX];
 static size_t q_rd, q_wr;
 
-int ip_defer_push(in_addr_t src, in_addr_t dst, uint8_t proto,
+int ip_defer_push(in_addr_t dst, uint8_t proto,
                   const uint8_t * buf, size_t bsize)
 {
     const size_t next = (q_wr + 1) % num_elem(ip_defer_queue);
@@ -48,7 +47,6 @@ int ip_defer_push(in_addr_t src, in_addr_t dst, uint8_t proto,
     }
 
     slot->tries = 0;
-    slot->src = src;
     slot->dst = dst;
     slot->proto = proto;
     memcpy(slot->buf, buf, bsize);
@@ -95,7 +93,7 @@ void ip_defer_handler(int delta_time __unused)
             continue;
         }
 
-        if (ip_send(ipd->src, ipd->dst, ipd->proto, ipd->buf, ipd->buf_size) == -1) {
+        if (ip_send(ipd->dst, ipd->proto, ipd->buf, ipd->buf_size) == -1) {
             if (errno == EHOSTUNREACH) {
                 ipd->tries++; /* Try again later. */
                 return;

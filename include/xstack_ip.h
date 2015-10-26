@@ -143,7 +143,7 @@ int ip_route_remove(struct ip_route * route);
  * @param[out] route    is a pointer to a ip_route struct that will be updated
  *                      if a route is found.
  */
-int ip_route_fin_by_network(in_addr_t network, struct ip_route * route);
+int ip_route_find_by_network(in_addr_t ip, struct ip_route * route);
 
 /**
  * Get routing information for a source IP addess.
@@ -159,8 +159,7 @@ int ip_route_find_by_iface(in_addr_t addr, struct ip_route * route);
 /**
  * Send an IP packet to a destination.
  */
-int ip_send(in_addr_t src, in_addr_t dst, uint8_t proto,
-            const uint8_t * buf, size_t bsize);
+int ip_send(in_addr_t dst, uint8_t proto, const uint8_t * buf, size_t bsize);
 
 void ip_run_periodic_tasks(int delta_time);
 
