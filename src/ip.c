@@ -4,6 +4,7 @@
 
 #include "xstack_arp.h"
 #include "xstack_ether.h"
+#include "xstack_icmp.h"
 #include "xstack_in.h"
 #include "xstack_ip.h"
 
@@ -88,7 +89,7 @@ void ip_run_periodic_tasks(int delta_time)
     }
 }
 
-static void ip_hton(struct ip_hdr * host, struct ip_hdr * net)
+void ip_hton(const struct ip_hdr * host, struct ip_hdr * net)
 {
     net->ip_vhl = host->ip_vhl;
     net->ip_tos = host->ip_tos;
@@ -102,7 +103,7 @@ static void ip_hton(struct ip_hdr * host, struct ip_hdr * net)
     net->ip_dst = htonl(host->ip_dst);
 }
 
-static void ip_ntoh(struct ip_hdr * net, struct ip_hdr * host)
+void ip_ntoh(const struct ip_hdr * net, struct ip_hdr * host)
 {
     host->ip_vhl = net->ip_vhl;
     host->ip_tos = net->ip_tos;
@@ -114,6 +115,28 @@ static void ip_ntoh(struct ip_hdr * net, struct ip_hdr * host)
     host->ip_csum = net->ip_csum;
     host->ip_src = ntohl(net->ip_src);
     host->ip_dst = ntohl(net->ip_dst);
+}
+
+size_t ip_reply_header(struct ip_hdr * host_ip_hdr, size_t bsize)
+{
+    struct ip_hdr * const ip = host_ip_hdr;
+    in_addr_t tmp;
+
+    /* Swap source and destination. */
+    tmp = ip->ip_src;
+    ip->ip_src = ip->ip_dst;
+    ip->ip_dst = tmp;
+    ip->ip_ttl = IP_TTL_DEFAULT;
+
+    bsize += ip_hdr_hlen(ip);
+    ip->ip_len = bsize;
+
+    /* Back to network order */
+    ip_hton(ip, ip);
+    ip->ip_csum = 0;
+    ip->ip_csum = ip_checksum(ip, sizeof(struct ip_hdr));
+
+    return bsize;
 }
 
 static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize)
@@ -137,7 +160,7 @@ static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsiz
     }
 
     /*
-     * RFE: The packet header is already modified with ntoh so this wont work.
+     * RFE The packet header is already modified with ntoh so this wont work.
      */
 #if 0
     if (ip_checksum(ip, hlen) != 0) {
@@ -147,21 +170,21 @@ static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsiz
 #endif
 
     if (ip->ip_tos != IP_TOS_DEFAULT) {
-        LOG(LOG_ERR, "Unsupported IP type of service or ECN: 0x%x", ip->ip_tos);
-        return 0;
+        LOG(LOG_INFO, "Unsupported IP type of service or ECN: 0x%x", ip->ip_tos);
     }
+
+    /* Insert to ARP table so it's possible/faster to send a reply. */
+    arp_cache_insert(ip->ip_src, hdr->h_src, ARP_CACHE_DYN);
 
     if (ip_route_find_by_iface(ip->ip_dst, NULL)) {
         LOG(LOG_WARN, "Invalid destination address");
 
         if (XSTACK_IP_SEND_HOSTUNREAC) {
-            /* TODO Send hostunreac */
+            return icmp_generate_dest_unreachable(ip, ICMP_CODE_HOSTUNREAC,
+                                                  payload + hlen, bsize - hlen);
         }
         return 0;
     }
-
-    /* Insert to ARP table so it's possible/faster to send a reply. */
-    arp_cache_insert(ip->ip_src, hdr->h_src, ARP_CACHE_DYN);
 
     SET_FOREACH(tmpp, _ip_proto_handlers) {
         proto = *tmpp;
@@ -179,29 +202,15 @@ static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsiz
         /* RFE Support fragments and use hlen + ip->ip_len? */
         retval = proto->fn(ip, payload + hlen, bsize - hlen);
         if (retval > 0) {
-            in_addr_t tmp;
-
-            /* Swap source and destination. */
-            tmp = ip->ip_src;
-            ip->ip_src = ip->ip_dst;
-            ip->ip_dst = tmp;
-
-            retval += ip_hdr_hlen(ip);
-            ip->ip_len = retval;
-
-            /* Back to network order */
-            ip_hton(ip, ip);
-            ip->ip_csum = 0;
-            ip->ip_csum = ip_checksum(ip, sizeof(struct ip_hdr));
+            retval = ip_reply_header(ip, retval);
         }
         return retval;
     } else {
         LOG(LOG_INFO, "Unsupported protocol");
 
-        errno = EPROTONOSUPPORT;
-        return -1;
+        return icmp_generate_dest_unreachable(ip, ICMP_CODE_PROTOUNREAC,
+                                              payload + hlen, bsize - hlen);
     }
-    return 0;
 }
 ETHER_PROTO_INPUT_HANDLER(ETHER_PROTO_IPV4, ip_input);
 

@@ -157,6 +157,25 @@ int ip_route_find_by_iface(in_addr_t addr, struct ip_route * route);
  */
 
 /**
+ * IP packet manipulation.
+ * @{
+ */
+void ip_hton(const struct ip_hdr * host, struct ip_hdr * net);
+void ip_ntoh(const struct ip_hdr * net, struct ip_hdr * host);
+
+/**
+ * Construct a reply header from a received IP packet header.
+ * Swaps src and dst etc.
+ * @param host_ip_hd is a pointer to a IP packet header that should be reversed.
+ * @param bsize is the size of the packet data.
+ * @returns Returns the size of the header.
+ */
+size_t ip_reply_header(struct ip_hdr * host_ip_hdr, size_t bsize);
+/**
+ * @}
+ */
+
+/**
  * Send an IP packet to a destination.
  */
 int ip_send(in_addr_t dst, uint8_t proto, const uint8_t * buf, size_t bsize);
