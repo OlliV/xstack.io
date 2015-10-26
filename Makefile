@@ -1,6 +1,6 @@
 CC := gcc
 CCFLAGS := -Wall -Wextra -g
-CCFLAGS += -include config.h
+CCFLAGS += -MMD -include config.h
 
 SRC := src/linux/linux_ether.c $(wildcard src/*.c)
 
@@ -9,6 +9,8 @@ all: inetd doc
 doc:
 	doxygen
 	cd latex && make
+
+-include inetd.d
 
 inetd: $(SRC)
 	@echo "CC $@"
