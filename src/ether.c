@@ -12,6 +12,7 @@ int ether_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize)
 {
     struct _ether_proto_handler ** tmpp;
     struct _ether_proto_handler * proto;
+    int retval;
 
     SET_FOREACH(tmpp, _ether_proto_handlers) {
         proto = *tmpp;
@@ -24,15 +25,29 @@ int ether_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize)
     LOG(LOG_DEBUG, "proto id: 0x%x", hdr->h_proto);
 
     if (proto) {
-        return proto->fn(hdr, payload, bsize);
+        retval = proto->fn(hdr, payload, bsize);
+        if (retval < 0) {
+            errno = -retval;
+            retval = -1;
+        }
     } else {
         errno = EPROTONOSUPPORT;
-        return -1;
+        retval = -1;
     }
+
+    return retval;
 }
 
 int ether_output_reply(int ether_handle, const struct ether_hdr * hdr,
                        uint8_t * payload, size_t bsize)
 {
-    return ether_send(ether_handle, hdr->h_src, hdr->h_proto, payload, bsize);
+    int retval;
+
+    retval = ether_send(ether_handle, hdr->h_src, hdr->h_proto, payload, bsize);
+    if (retval < 0) {
+        errno = -retval;
+        retval = -1;
+    }
+
+    return retval;
 }

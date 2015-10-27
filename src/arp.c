@@ -161,8 +161,7 @@ static int arp_input(const struct ether_hdr * hdr __unused, uint8_t * payload,
     arp_ntoh(arp_net, &arp);
 
     if (arp.arp_htype != ARP_HTYPE_ETHER) {
-        errno = EPROTOTYPE;
-        return -1;
+        return -EPROTOTYPE;
     }
 
     if (arp.arp_ptype == ETHER_PROTO_IPV4) {
@@ -201,8 +200,7 @@ static int arp_input(const struct ether_hdr * hdr __unused, uint8_t * payload,
     } else {
         LOG(LOG_DEBUG, "Unknown ptype");
 
-        errno = EPROTOTYPE;
-        return -1;
+        return -EPROTOTYPE;
     }
     return 0;
 }
@@ -225,16 +223,16 @@ static int arp_request(int ether_handle, in_addr_t spa, in_addr_t tpa)
         .arp_spa = spa,
         .arp_tpa = tpa,
     };
+    int retval;
 
     ether_handle2addr(ether_handle, msg.arp_sha);
     memset(msg.arp_tha, 0, sizeof(mac_addr_t));
 
     arp_hton(&msg, &msg);
-    if (ether_send(ether_handle, mac_broadcast_addr, ETHER_PROTO_ARP,
-                   (uint8_t *)(&msg), sizeof(msg)) == -1) {
-        return -1;
-    }
-    return 0;
+    retval = ether_send(ether_handle, mac_broadcast_addr, ETHER_PROTO_ARP,
+                        (uint8_t *)(&msg), sizeof(msg));
+
+    return (retval < 0) ? retval : 0;
 }
 
 int arp_gratuitous(int ether_handle, in_addr_t spa)
@@ -249,6 +247,7 @@ int arp_gratuitous(int ether_handle, in_addr_t spa)
         .arp_tpa = spa,
     };
     char str_ip[IP_STR_LEN];
+    int retval;
 
     ether_handle2addr(ether_handle, msg.arp_sha);
     memset(msg.arp_tha, 0, sizeof(mac_addr_t));
@@ -257,8 +256,9 @@ int arp_gratuitous(int ether_handle, in_addr_t spa)
     LOG(LOG_DEBUG, "Announce %s", str_ip);
 
     arp_hton(&msg, &msg);
-    if (ether_send(ether_handle, mac_broadcast_addr, ETHER_PROTO_ARP,
-                   (uint8_t *)(&msg), sizeof(msg)) == -1) {
+    retval = ether_send(ether_handle, mac_broadcast_addr, ETHER_PROTO_ARP,
+                        (uint8_t *)(&msg), sizeof(msg));
+    if (retval < 0) {
         char errmsg[40];
 
         strerror_r(errno, errmsg, sizeof(errmsg));

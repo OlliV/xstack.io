@@ -36,7 +36,7 @@ struct icmp_destunreac {
  */
 #define ICMP_TYPE_ECHO_REPLY    0
 #define ICMP_TYPE_DESTUNREAC    3
-#define ICMP_TYPE_ECHO          8
+#define ICMP_TYPE_ECHO_REQUEST  8
 /**
  * @}
  */

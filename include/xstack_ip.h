@@ -54,6 +54,12 @@ struct ip_hdr {
  */
 
 /**
+ * Get IP version.
+ */
+#define IP_VERSION(_ip_hdr_) \
+    (((ip_hdr)->ip_vhl & 0x40) >> 4)
+
+/**
  * IP protocol numbers.
  * @{
  */
@@ -180,6 +186,9 @@ size_t ip_reply_header(struct ip_hdr * host_ip_hdr, size_t bsize);
  */
 int ip_send(in_addr_t dst, uint8_t proto, const uint8_t * buf, size_t bsize);
 
+/**
+ * Execute registered periodic tasks.
+ */
 void ip_run_periodic_tasks(int delta_time);
 
 #endif /* XSTACK_IP_H */

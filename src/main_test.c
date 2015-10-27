@@ -24,7 +24,8 @@ static int eval_timer(void)
 int main(void)
 {
     char * const ether_args[] = {
-        "enp0s20u1",
+        //"enp0s20u1",
+        "veth1",
         NULL,
     };
     int handle;
@@ -35,7 +36,7 @@ int main(void)
         exit(1);
     }
 
-    if (ip_config(handle, 167772161, 4294967040)) {
+    if (ip_config(handle, 167772162, 4294967040)) {
         perror("Failed to config IP");
         exit(1);
     }

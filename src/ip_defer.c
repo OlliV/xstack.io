@@ -31,19 +31,16 @@ int ip_defer_push(in_addr_t dst, uint8_t proto,
     struct ip_defer * slot;
 
     if (defer_inhibit) {
-        errno = EALREADY;
-        return -1;
+        return -EALREADY;
     }
 
     if (next == q_rd) {
-        errno = ENOBUFS;
-        return -1;
+        return -ENOBUFS;
     }
     slot = ip_defer_queue + q_wr;
 
     if (bsize > ETHER_ALEN) {
-        errno = EMSGSIZE;
-        return -1;
+        return -EMSGSIZE;
     }
 
     slot->tries = 0;
@@ -84,7 +81,7 @@ void ip_defer_handler(int delta_time __unused)
             return;
         }
 
-        if (ipd->tries++ > 3) { /* After couple of tries we must drop it. */
+        if (ipd->tries++ > 3) { /* Drop the packet after couple of tries. */
             char str_ip[IP_STR_LEN];
 
             ip2str(ipd->dst, str_ip);

@@ -226,16 +226,18 @@ int ether_send(int handle, const mac_addr_t dst, uint16_t proto,
     uint8_t * data = frame + ETHER_HEADER_LEN;
     struct ether_hdr * frame_hdr = (struct ether_hdr *)frame;
     uint32_t * fcs_p = (uint32_t *)&frame[frame_size - ETHER_FCS_LEN];
+    int retval;
 
     assert(buf != NULL);
 
     if (frame_size > ETHER_MAXLEN) {
-        errno = EMSGSIZE;
-        return -1;
+        retval = -EMSGSIZE;
+        goto out;
     }
 
     if (!(eth = ether_handle2eth(handle))) {
-        return -1;
+        retval = -errno;
+        goto out;
     }
 
     socket_address = (struct sockaddr_ll){
@@ -259,7 +261,9 @@ int ether_send(int handle, const mac_addr_t dst, uint16_t proto,
     fcs = ether_fcs(frame, frame_size - ETHER_FCS_LEN);
     memcpy(fcs_p, &fcs, sizeof(uint32_t));
 
-    return (int)sendto(eth->el_fd, frame, frame_size, 0,
-                       (struct sockaddr *)(&socket_address),
-                       sizeof(socket_address));
+    retval = (int)sendto(eth->el_fd, frame, frame_size, 0,
+                         (struct sockaddr *)(&socket_address),
+                         sizeof(socket_address));
+out:
+    return retval;
 }

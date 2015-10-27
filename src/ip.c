@@ -204,6 +204,12 @@ static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsiz
         if (retval > 0) {
             retval = ip_reply_header(ip, retval);
         }
+        if (retval == -ENOTSOCK) {
+            LOG(LOG_INFO, "Unreachable port");
+
+            return icmp_generate_dest_unreachable(ip, ICMP_CODE_PORTUNREAC,
+                                                  payload + hlen, bsize - hlen);
+        }
         return retval;
     } else {
         LOG(LOG_INFO, "Unsupported protocol");
@@ -243,9 +249,11 @@ int ip_send(in_addr_t dst, uint8_t proto, const uint8_t * buf, size_t bsize)
              * the reveiver's MAC addr to be resolved.
              */
             retval = ip_defer_push(dst, proto, buf, bsize);
-            if (retval == 0 || (retval == -1 && errno == EALREADY)) {
+            if (retval == 0 || (retval == -EALREADY)) {
                 return 0; /* Return 0 to indicate an defered operation. */
-            } /* else an error occured. */
+            } else { /* else an error occured. */
+                errno = -retval;
+            }
         }
         return -1;
     }

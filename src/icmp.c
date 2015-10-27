@@ -29,8 +29,7 @@ static int icmp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bs
     if (bsize < sizeof(struct icmp)) {
         LOG(LOG_ERR, "Invalid ICMP message size");
 
-        errno = EBADMSG;
-        return -1;
+        return -EBADMSG;
     }
 
     icmp_ntoh(net_msg, &hdr);
@@ -38,7 +37,7 @@ static int icmp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bs
 
     LOG(LOG_DEBUG, "ICMP type: %d", hdr.icmp_type);
     switch (hdr.icmp_type) {
-    case ICMP_TYPE_ECHO:
+    case ICMP_TYPE_ECHO_REQUEST:
         net_msg->icmp_type = ICMP_TYPE_ECHO_REPLY;
         net_msg->icmp_csum = 0;
         net_msg->icmp_csum = ip_checksum(net_msg, msg_size);
@@ -47,8 +46,7 @@ static int icmp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bs
     default:
         LOG(LOG_INFO, "Unkown ICMP message type");
 
-        errno = ENOMSG;
-        return -1;
+        return -ENOMSG;
     }
 }
 IP_PROTO_INPUT_HANDLER(IP_PROTO_ICMP, icmp_input);
