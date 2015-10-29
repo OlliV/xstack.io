@@ -1,6 +1,6 @@
 CC := gcc
 CCFLAGS := -Wall -Wextra -g
-CCFLAGS += -MMD -include config.h
+CCFLAGS += --std=gnu99 -MMD -include config.h
 
 SRC := src/linux/linux_ether.c $(wildcard src/*.c)
 
