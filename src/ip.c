@@ -235,7 +235,7 @@ ETHER_PROTO_INPUT_HANDLER(ETHER_PROTO_IPV4, ip_input);
 
 static size_t next_fragment_size(size_t bytes, size_t hlen, size_t mtu)
 {
-    size_t max = mtu - hlen - 4; /* RFE Kernel bug with veth? */
+    size_t max = mtu - hlen;
 
     return (bytes < max) ? bytes : max;
 }
@@ -254,7 +254,6 @@ static int ip_send_fragments(int ether_handle, const mac_addr_t dst_mac,
     data = payload + hlen;
     bytes -= hlen;
     plen = next_fragment_size(bytes, hlen, ETHER_DATA_LEN);
-    LOG(LOG_DEBUG, "%d", (int)plen);
     do {
         int eret;
 
