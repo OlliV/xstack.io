@@ -6,6 +6,7 @@
 #ifndef XSTACK_IP_H
 #define XSTACK_IP_H
 
+#include "xstack_ether.h"
 #include "xstack_in.h"
 #include "linker_set.h"
 
@@ -48,9 +49,13 @@ struct ip_hdr {
 #define IP_VHL_DEFAULT  0x45    /*!< Default value for version and ihl. */
 #define IP_TOS_DEFAULT  0x0     /*!< Default type of service and no ECN */
 #define IP_TOFF_DEFAULT 0x4000
-#define IP_TTL_DEFAULT 64
+#define IP_TTL_DEFAULT  64
 /**
  * @}
+ */
+
+/**
+ * IP Packet header values.
  */
 
 /**
@@ -58,6 +63,14 @@ struct ip_hdr {
  */
 #define IP_VERSION(_ip_hdr_) \
     (((ip_hdr)->ip_vhl & 0x40) >> 4)
+
+#define IP_FALGS_DF 0x4000
+#define IP_FLAGS_MF 0x2000
+
+/**
+ * Max IP packet size in bytes.
+ */
+#define IP_MAX_BYTES 65535
 
 /**
  * IP protocol numbers.
@@ -68,6 +81,10 @@ struct ip_hdr {
 #define IP_PROTO_TCP      6
 #define IP_PROTO_UDP     17
 #define IP_PROTO_SCTP   132
+/**
+ * @}
+ */
+
 /**
  * @}
  */
@@ -163,11 +180,13 @@ int ip_route_find_by_iface(in_addr_t addr, struct ip_route * route);
  */
 
 /**
- * IP packet manipulation.
+ * IP packet handling and manipulation.
  * @{
  */
 void ip_hton(const struct ip_hdr * host, struct ip_hdr * net);
 void ip_ntoh(const struct ip_hdr * net, struct ip_hdr * host);
+
+int ip_input(const struct ether_hdr * e_hdr, uint8_t * payload, size_t bsize);
 
 /**
  * Construct a reply header from a received IP packet header.
@@ -190,6 +209,22 @@ int ip_send(in_addr_t dst, uint8_t proto, const uint8_t * buf, size_t bsize);
  * Execute registered periodic tasks.
  */
 void ip_run_periodic_tasks(int delta_time);
+
+/**
+ * IP Fragmentation
+ * @{
+ */
+
+static inline int ip_fragment_is_frag(struct ip_hdr * hdr)
+{
+    return (!!(hdr->ip_foff & IP_FLAGS_MF) || !!(hdr->ip_foff & 0x1fff));
+}
+
+int ip_fragment_input(struct ip_hdr * ip_hdr, uint8_t * rx_packet);
+
+/**
+ * @}
+ */
 
 #endif /* XSTACK_IP_H */
 

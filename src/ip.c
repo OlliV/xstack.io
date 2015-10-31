@@ -1,9 +1,7 @@
 #include <errno.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "xstack_arp.h"
-#include "xstack_ether.h"
 #include "xstack_icmp.h"
 #include "xstack_in.h"
 #include "xstack_ip.h"
@@ -139,14 +137,16 @@ size_t ip_reply_header(struct ip_hdr * host_ip_hdr, size_t bsize)
     return bsize;
 }
 
-static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsize)
+int ip_input(const struct ether_hdr * e_hdr, uint8_t * payload, size_t bsize)
 {
     struct ip_hdr * ip = (struct ip_hdr *)payload;
     struct _ip_proto_handler ** tmpp;
     struct _ip_proto_handler * proto;
     size_t hlen;
 
-    ip_ntoh(ip, ip);
+    if (e_hdr) {
+        ip_ntoh(ip, ip);
+    }
 
     if ((ip->ip_vhl & 0x40) != 0x40) {
         LOG(LOG_ERR, "Unsupported IP packet version: 0x%x", ip->ip_vhl);
@@ -154,7 +154,7 @@ static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsiz
     }
 
     hlen = ip_hdr_hlen(ip);
-    if (hlen < 20 || ip->ip_len > bsize) {
+    if (hlen < 20 || ip->ip_len > bsize) { /* TODO remove size limit for fragmentation */
         LOG(LOG_ERR, "Incorrect packet header length: %d", (int)hlen);
         return 0;
     }
@@ -173,16 +173,30 @@ static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsiz
         LOG(LOG_INFO, "Unsupported IP type of service or ECN: 0x%x", ip->ip_tos);
     }
 
-    /* Insert to ARP table so it's possible/faster to send a reply. */
-    arp_cache_insert(ip->ip_src, hdr->h_src, ARP_CACHE_DYN);
+    if (e_hdr) {
+        /* Insert to ARP table so it's possible/faster to send a reply. */
+        arp_cache_insert(ip->ip_src, e_hdr->h_src, ARP_CACHE_DYN);
+    }
 
     if (ip_route_find_by_iface(ip->ip_dst, NULL)) {
-        LOG(LOG_WARN, "Invalid destination address");
+        char dst_str[IP_STR_LEN];
+
+        ip2str(ip->ip_dst, dst_str);
+        LOG(LOG_WARN, "Invalid destination address %s", dst_str);
 
         if (XSTACK_IP_SEND_HOSTUNREAC) {
             return icmp_generate_dest_unreachable(ip, ICMP_CODE_HOSTUNREAC,
                                                   payload + hlen, bsize - hlen);
         }
+        return 0;
+    }
+
+    if (ip_fragment_is_frag(ip)) {
+        /*
+         * Fragmented packet must be first reassembled.
+         */
+        ip_fragment_input(ip, payload + hlen);
+
         return 0;
     }
 
@@ -199,7 +213,6 @@ static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsiz
     if (proto) {
         int retval;
 
-        /* RFE Support fragments and use hlen + ip->ip_len? */
         retval = proto->fn(ip, payload + hlen, bsize - hlen);
         if (retval > 0) {
             retval = ip_reply_header(ip, retval);
@@ -220,6 +233,51 @@ static int ip_input(const struct ether_hdr * hdr, uint8_t * payload, size_t bsiz
 }
 ETHER_PROTO_INPUT_HANDLER(ETHER_PROTO_IPV4, ip_input);
 
+static size_t next_fragment_size(size_t bytes, size_t hlen, size_t mtu)
+{
+    size_t max = mtu - hlen - 4; /* RFE Kernel bug with veth? */
+
+    return (bytes < max) ? bytes : max;
+}
+
+static int ip_send_fragments(int ether_handle, const mac_addr_t dst_mac,
+                             uint8_t * payload, size_t bsize)
+{
+    struct ip_hdr * ip_hdr_net = (struct ip_hdr *)payload;
+    struct ip_hdr ip_hdr;
+    uint8_t * data;
+    size_t hlen, plen, bytes = bsize, offset = 0;
+    int retval = 0;
+
+    ip_ntoh(ip_hdr_net, &ip_hdr);
+    hlen = ip_hdr_hlen(&ip_hdr);
+    data = payload + hlen;
+    bytes -= hlen;
+    plen = next_fragment_size(bytes, hlen, ETHER_DATA_LEN);
+    LOG(LOG_DEBUG, "%d", (int)plen);
+    do {
+        int eret;
+
+        ip_hdr.ip_len = hlen + plen;
+        bytes -= plen;
+        ip_hdr.ip_foff = ((bytes != 0) ? IP_FLAGS_MF : 0) | (offset >> 3);
+
+        ip_hton(&ip_hdr, ip_hdr_net);
+        ip_hdr_net->ip_csum = 0;
+        ip_hdr_net->ip_csum = ip_checksum(ip_hdr_net, hlen);
+        memmove(data, data + offset, plen);
+        eret = ether_send(ether_handle, dst_mac, ETHER_PROTO_IPV4,
+                          payload, ip_hdr.ip_len);
+        if (eret < 0) {
+            return eret;
+        }
+        retval += eret;
+        offset += plen;
+    } while (bytes && (plen = next_fragment_size(bytes, hlen, ETHER_DATA_LEN)));
+
+    return retval;
+}
+
 static struct ip_hdr ip_hdr_template = {
     .ip_vhl = IP_VHL_DEFAULT,
     .ip_tos = IP_TOS_DEFAULT,
@@ -231,42 +289,66 @@ int ip_send(in_addr_t dst, uint8_t proto, const uint8_t * buf, size_t bsize)
 {
     mac_addr_t dst_mac;
     size_t packet_size = sizeof(struct ip_hdr) + bsize;
-    uint8_t packet[packet_size];
-    struct ip_hdr * hdr = (struct ip_hdr *)packet;
     struct ip_route route;
 
     if (ip_route_find_by_network(dst, &route)) {
-        LOG(LOG_ERR, "No route to host");
+        char ip_str[IP_STR_LEN];
+
+        ip2str(dst, ip_str);
+        LOG(LOG_ERR, "No route to host %s", ip_str);
         errno = EHOSTUNREACH;
         return -1;
     }
 
     if (arp_cache_get_haddr(route.r_iface, dst, dst_mac)) {
+        int retval;
+
         if (errno == EHOSTUNREACH) {
-            int retval;
             /*
              * We must defer the operation for now because we are waiting for
              * the reveiver's MAC addr to be resolved.
              */
             retval = ip_defer_push(dst, proto, buf, bsize);
             if (retval == 0 || (retval == -EALREADY)) {
-                return 0; /* Return 0 to indicate an defered operation. */
+                retval = 0; /* Return 0 to indicate an defered operation. */
             } else { /* else an error occured. */
                 errno = -retval;
+                retval = -1;
             }
         }
-        return -1;
+        return retval;
     }
 
-    memcpy(hdr, &ip_hdr_template, sizeof(ip_hdr_template));
-    hdr->ip_len = packet_size;
-    hdr->ip_src = route.r_iface;
-    hdr->ip_dst = dst;
-    hdr->ip_proto = proto;
-    memcpy(packet + sizeof(ip_hdr_template), buf, bsize);
-    ip_hton(hdr, hdr);
-    hdr->ip_csum = ip_checksum(hdr, sizeof(struct ip_hdr));
+    {
+        uint8_t packet[packet_size];
+        struct ip_hdr * hdr = (struct ip_hdr *)packet;
+        int retval;
 
-    return ether_send(route.r_iface_handle, dst_mac, ETHER_PROTO_IPV4, packet,
-                      packet_size);
+        memcpy(hdr, &ip_hdr_template, sizeof(ip_hdr_template));
+        hdr->ip_len = packet_size;
+        hdr->ip_src = route.r_iface;
+        hdr->ip_dst = dst;
+        hdr->ip_proto = proto;
+        memcpy(packet + sizeof(ip_hdr_template), buf, bsize);
+        ip_hton(hdr, hdr);
+        hdr->ip_csum = ip_checksum(hdr, sizeof(struct ip_hdr)); /* TODO to hlen */
+
+        if (bsize <= ETHER_DATA_LEN) {
+            retval = ether_send(route.r_iface_handle, dst_mac, ETHER_PROTO_IPV4,
+                                packet, packet_size);
+        } else if (1) { /* Check DF flag */
+            retval = ip_send_fragments(route.r_iface_handle, dst_mac,
+                                       packet, packet_size);
+            if (retval < 0) {
+                errno = -retval;
+                retval = -1;
+            }
+        } else {
+            /* TODO Fail properly */
+            errno = EMSGSIZE;
+            retval = -1;
+        }
+
+        return retval;
+    }
 }

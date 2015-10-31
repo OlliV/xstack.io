@@ -230,7 +230,7 @@ int ether_send(int handle, const mac_addr_t dst, uint16_t proto,
 
     assert(buf != NULL);
 
-    if (frame_size > ETHER_MAXLEN) {
+    if (frame_size > ETHER_MAXLEN + ETHER_FCS_LEN) {
         retval = -EMSGSIZE;
         goto out;
     }
@@ -264,6 +264,9 @@ int ether_send(int handle, const mac_addr_t dst, uint16_t proto,
     retval = (int)sendto(eth->el_fd, frame, frame_size, 0,
                          (struct sockaddr *)(&socket_address),
                          sizeof(socket_address));
+    if (retval < 0) {
+        retval = -errno;
+    }
 out:
     return retval;
 }
