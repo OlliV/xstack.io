@@ -300,7 +300,7 @@ int ip_send(in_addr_t dst, uint8_t proto, const uint8_t * buf, size_t bsize)
     }
 
     if (arp_cache_get_haddr(route.r_iface, dst, dst_mac)) {
-        int retval;
+        int retval = 0;
 
         if (errno == EHOSTUNREACH) {
             /*

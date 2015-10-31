@@ -24,8 +24,8 @@ static int eval_timer(void)
 int main(void)
 {
     char * const ether_args[] = {
-        "enp0s20u1",
-        //"veth1",
+        //"enp0s20u1",
+        "veth1",
         NULL,
     };
     int handle;
