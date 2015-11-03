@@ -277,7 +277,7 @@ static int ip_send_fragments(int ether_handle, const mac_addr_t dst_mac,
     return retval;
 }
 
-static struct ip_hdr ip_hdr_template = {
+static const struct ip_hdr ip_hdr_template = {
     .ip_vhl = IP_VHL_DEFAULT,
     .ip_tos = IP_TOS_DEFAULT,
     .ip_foff = IP_TOFF_DEFAULT,
