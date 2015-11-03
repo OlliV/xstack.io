@@ -219,15 +219,18 @@ int ether_send(int handle, const mac_addr_t dst, uint16_t proto,
     struct ether_linux * eth;
     struct sockaddr_ll socket_address;
     const size_t frame_size = ETHER_HEADER_LEN +
-                              max(bsize, ETHER_MINLEN);
+                              max(bsize, ETHER_MINLEN - ETHER_FCS_LEN) +
+                              ETHER_FCS_LEN;
     uint8_t frame[frame_size] __attribute__ ((aligned));
+    uint32_t fcs;
     uint8_t * data = frame + ETHER_HEADER_LEN;
     struct ether_hdr * frame_hdr = (struct ether_hdr *)frame;
+    uint32_t * fcs_p = (uint32_t *)&frame[frame_size - ETHER_FCS_LEN];
     int retval;
 
     assert(buf != NULL);
 
-    if (frame_size > ETHER_MAXLEN) {
+    if (frame_size > ETHER_MAXLEN + ETHER_FCS_LEN) {
         retval = -EMSGSIZE;
         goto out;
     }
@@ -255,6 +258,8 @@ int ether_send(int handle, const mac_addr_t dst, uint16_t proto,
     frame_hdr->h_proto = htons(proto);
     memcpy(data, buf, bsize);
     memset(data + bsize, 0, frame_size - ETHER_HEADER_LEN - bsize);
+    fcs = ether_fcs(frame, frame_size - ETHER_FCS_LEN);
+    memcpy(fcs_p, &fcs, sizeof(uint32_t));
 
     retval = (int)sendto(eth->el_fd, frame, frame_size, 0,
                          (struct sockaddr *)(&socket_address),

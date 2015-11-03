@@ -182,6 +182,7 @@ int ip_fragment_input(struct ip_hdr * ip_hdr, uint8_t * rx_packet)
             LOG(LOG_DEBUG, "Fragmented packet was fully reassembled");
             retval = ip_input(NULL, (uint8_t *)(&p->ip_hdr), p->ip_hdr.ip_len);
 
+            LOG(LOG_DEBUG, "Sending %d bytes", retval);
             ip_ntoh(&p->ip_hdr, &p->ip_hdr);
             retval = ip_send(p->ip_hdr.ip_dst, p->ip_hdr.ip_proto,
                              p->payload, retval);
