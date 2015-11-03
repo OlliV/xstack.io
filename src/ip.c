@@ -254,7 +254,6 @@ static int ip_send_fragments(int ether_handle, const mac_addr_t dst_mac,
     data = payload + hlen;
     bytes -= hlen;
     plen = next_fragment_size(bytes, hlen, ETHER_DATA_LEN);
-    LOG(LOG_DEBUG, "%d", (int)plen);
     do {
         int eret;
 
