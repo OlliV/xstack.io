@@ -41,8 +41,6 @@ int main(void)
         exit(1);
     }
 
-    ip_send(167772162, IP_PROTO_SCTP, (uint8_t *)"test", 5);
-
     while (1) {
         struct ether_hdr hdr;
         int retval;
@@ -67,6 +65,11 @@ int main(void)
         if (eval_timer()) {
             printf("tick\n");
             ip_run_periodic_tasks(delta_time);
+
+            /* Testing */
+            if (ip_send(167772161, IP_PROTO_SCTP, (uint8_t *)"test", 5) < 0) {
+                perror("Failed to send");
+            }
         }
     }
 
