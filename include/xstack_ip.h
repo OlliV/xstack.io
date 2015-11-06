@@ -184,7 +184,7 @@ int ip_route_find_by_iface(in_addr_t addr, struct ip_route * route);
  * @{
  */
 void ip_hton(const struct ip_hdr * host, struct ip_hdr * net);
-void ip_ntoh(const struct ip_hdr * net, struct ip_hdr * host);
+size_t ip_ntoh(const struct ip_hdr * net, struct ip_hdr * host);
 
 int ip_input(const struct ether_hdr * e_hdr, uint8_t * payload, size_t bsize);
 

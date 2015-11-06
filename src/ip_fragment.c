@@ -120,7 +120,7 @@ struct packet_buf * get_packet_buffer(struct ip_hdr * hdr)
 
         if (old == 0) {
             fragmap_init(&p->fragmap);
-            p->ip_hdr = *hdr; /* RFE Clear members that aren't needed. */
+            p->ip_hdr = *hdr; /* RFE Clear things that aren't needed. */
             p->ip_hdr.ip_foff = 0;
             p->ip_hdr.ip_len = 0;
             /* TODO Update timer */
@@ -179,7 +179,8 @@ int ip_fragment_input(struct ip_hdr * ip_hdr, uint8_t * rx_packet)
         if (!t) {
             int retval;
 
-            LOG(LOG_DEBUG, "Fragmented packet was fully reassembled");
+            LOG(LOG_DEBUG, "Fragmented packet was fully reassembled (len: %u)",
+                (unsigned)p->ip_hdr.ip_len);
             retval = ip_input(NULL, (uint8_t *)(&p->ip_hdr), p->ip_hdr.ip_len);
 
             ip_ntoh(&p->ip_hdr, &p->ip_hdr);

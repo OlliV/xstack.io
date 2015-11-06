@@ -101,7 +101,7 @@ void ip_hton(const struct ip_hdr * host, struct ip_hdr * net)
     net->ip_dst = htonl(host->ip_dst);
 }
 
-void ip_ntoh(const struct ip_hdr * net, struct ip_hdr * host)
+size_t ip_ntoh(const struct ip_hdr * net, struct ip_hdr * host)
 {
     host->ip_vhl = net->ip_vhl;
     host->ip_tos = net->ip_tos;
@@ -113,6 +113,8 @@ void ip_ntoh(const struct ip_hdr * net, struct ip_hdr * host)
     host->ip_csum = net->ip_csum;
     host->ip_src = ntohl(net->ip_src);
     host->ip_dst = ntohl(net->ip_dst);
+
+    return ip_hdr_hlen(host);
 }
 
 size_t ip_reply_header(struct ip_hdr * host_ip_hdr, size_t bsize)
@@ -154,7 +156,7 @@ int ip_input(const struct ether_hdr * e_hdr, uint8_t * payload, size_t bsize)
     }
 
     hlen = ip_hdr_hlen(ip);
-    if (hlen < 20 || ip->ip_len > bsize) { /* TODO remove size limit for fragmentation */
+    if (hlen < 20 || ip->ip_len != bsize) {
         LOG(LOG_ERR, "Incorrect packet header length: %d", (int)hlen);
         return 0;
     }
@@ -170,7 +172,8 @@ int ip_input(const struct ether_hdr * e_hdr, uint8_t * payload, size_t bsize)
 #endif
 
     if (ip->ip_tos != IP_TOS_DEFAULT) {
-        LOG(LOG_INFO, "Unsupported IP type of service or ECN: 0x%x", ip->ip_tos);
+        LOG(LOG_INFO, "Unsupported IP type of service or ECN: 0x%x",
+            ip->ip_tos);
     }
 
     if (e_hdr) {
@@ -235,9 +238,13 @@ ETHER_PROTO_INPUT_HANDLER(ETHER_PROTO_IPV4, ip_input);
 
 static size_t next_fragment_size(size_t bytes, size_t hlen, size_t mtu)
 {
-    size_t max = mtu - hlen - 4; /* RFE Kernel bug with veth? */
+    size_t max, retval;
 
-    return (bytes < max) ? bytes : max;
+    max = mtu - hlen - 8; /* RFE A kernel bug? */
+    retval = (bytes < max) ? bytes : max;
+    retval = (retval + 7) & ~7;
+
+    return retval;
 }
 
 static int ip_send_fragments(int ether_handle, const mac_addr_t dst_mac,
@@ -246,19 +253,18 @@ static int ip_send_fragments(int ether_handle, const mac_addr_t dst_mac,
     struct ip_hdr * ip_hdr_net = (struct ip_hdr *)payload;
     struct ip_hdr ip_hdr;
     uint8_t * data;
-    size_t hlen, plen, bytes = bsize, offset = 0;
+    size_t hlen, plen, bytes, offset = 0;
     int retval = 0;
 
-    ip_ntoh(ip_hdr_net, &ip_hdr);
-    hlen = ip_hdr_hlen(&ip_hdr);
+    hlen = ip_ntoh(ip_hdr_net, &ip_hdr);
     data = payload + hlen;
-    bytes -= hlen;
-    plen = next_fragment_size(bytes, hlen, ETHER_DATA_LEN);
+    bytes = bsize - hlen;
     do {
         int eret;
 
-        ip_hdr.ip_len = hlen + plen;
+        plen = next_fragment_size(bytes, hlen, ETHER_DATA_LEN);
         bytes -= plen;
+        ip_hdr.ip_len = hlen + plen;
         ip_hdr.ip_foff = ((bytes != 0) ? IP_FLAGS_MF : 0) | (offset >> 3);
 
         ip_hton(&ip_hdr, ip_hdr_net);
@@ -272,7 +278,7 @@ static int ip_send_fragments(int ether_handle, const mac_addr_t dst_mac,
         }
         retval += eret;
         offset += plen;
-    } while (bytes && (plen = next_fragment_size(bytes, hlen, ETHER_DATA_LEN)));
+    } while (bytes > 0);
 
     return retval;
 }

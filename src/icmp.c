@@ -20,11 +20,11 @@ static void icmp_ntoh(const struct icmp * net, struct icmp * host)
     host->icmp_csum  = net->icmp_csum;
 }
 
-static int icmp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsize)
+static int icmp_input(const struct ip_hdr * ip_hdr __unused,
+                      uint8_t * payload, size_t bsize)
 {
     struct icmp * net_msg = (struct icmp *)payload;
     struct icmp hdr;
-    size_t msg_size;
 
     if (bsize < sizeof(struct icmp)) {
         LOG(LOG_ERR, "Invalid ICMP message size");
@@ -33,16 +33,15 @@ static int icmp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bs
     }
 
     icmp_ntoh(net_msg, &hdr);
-    msg_size = ip_hdr->ip_len - ip_hdr_hlen(ip_hdr);
 
     LOG(LOG_DEBUG, "ICMP type: %d", hdr.icmp_type);
     switch (hdr.icmp_type) {
     case ICMP_TYPE_ECHO_REQUEST:
         net_msg->icmp_type = ICMP_TYPE_ECHO_REPLY;
         net_msg->icmp_csum = 0;
-        net_msg->icmp_csum = ip_checksum(net_msg, msg_size);
+        net_msg->icmp_csum = ip_checksum(net_msg, bsize);
 
-        return msg_size;
+        return bsize;
     default:
         LOG(LOG_INFO, "Unkown ICMP message type");
 
