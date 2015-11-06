@@ -12,6 +12,8 @@
 SET_DECLARE(_ip_proto_handlers, struct _ip_proto_handler);
 SET_DECLARE(_ip_periodic_tasks, void);
 
+static unsigned ip_global_id; /* Global ID for IP packets. */
+
 int ip_config(int ether_handle, in_addr_t ip_addr, in_addr_t netmask)
 {
     mac_addr_t mac;
@@ -89,6 +91,8 @@ void ip_run_periodic_tasks(int delta_time)
 
 void ip_hton(const struct ip_hdr * host, struct ip_hdr * net)
 {
+    size_t hlen = ip_hdr_hlen(host);
+
     net->ip_vhl = host->ip_vhl;
     net->ip_tos = host->ip_tos;
     net->ip_len = htons(host->ip_len);
@@ -99,6 +103,9 @@ void ip_hton(const struct ip_hdr * host, struct ip_hdr * net)
     net->ip_csum = host->ip_csum;
     net->ip_src = htonl(host->ip_src);
     net->ip_dst = htonl(host->ip_dst);
+
+    net->ip_csum = 0;
+    net->ip_csum = ip_checksum(net, hlen);
 }
 
 size_t ip_ntoh(const struct ip_hdr * net, struct ip_hdr * host)
@@ -133,8 +140,6 @@ size_t ip_reply_header(struct ip_hdr * host_ip_hdr, size_t bsize)
 
     /* Back to network order */
     ip_hton(ip, ip);
-    ip->ip_csum = 0;
-    ip->ip_csum = ip_checksum(ip, sizeof(struct ip_hdr));
 
     return bsize;
 }
@@ -268,8 +273,6 @@ static int ip_send_fragments(int ether_handle, const mac_addr_t dst_mac,
         ip_hdr.ip_foff = ((bytes != 0) ? IP_FLAGS_MF : 0) | (offset >> 3);
 
         ip_hton(&ip_hdr, ip_hdr_net);
-        ip_hdr_net->ip_csum = 0;
-        ip_hdr_net->ip_csum = ip_checksum(ip_hdr_net, hlen);
         memmove(data, data + offset, plen);
         eret = ether_send(ether_handle, dst_mac, ETHER_PROTO_IPV4,
                           payload, ip_hdr.ip_len);
@@ -331,12 +334,12 @@ int ip_send(in_addr_t dst, uint8_t proto, const uint8_t * buf, size_t bsize)
 
         memcpy(hdr, &ip_hdr_template, sizeof(ip_hdr_template));
         hdr->ip_len = packet_size;
+        hdr->ip_id = ip_global_id++;
         hdr->ip_src = route.r_iface;
         hdr->ip_dst = dst;
         hdr->ip_proto = proto;
         memcpy(packet + sizeof(ip_hdr_template), buf, bsize);
         ip_hton(hdr, hdr);
-        hdr->ip_csum = ip_checksum(hdr, sizeof(struct ip_hdr)); /* TODO to hlen */
 
         if (bsize <= ETHER_DATA_LEN) {
             retval = ether_send(route.r_iface_handle, dst_mac, ETHER_PROTO_IPV4,
