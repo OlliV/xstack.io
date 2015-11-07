@@ -20,6 +20,7 @@ struct fragment_map {
 
 struct packet_buf {
     int reserved;
+    int timer;
     struct fragment_map fragmap;
     struct ip_hdr ip_hdr;
     uint8_t payload[IP_MAX_BYTES];
@@ -33,7 +34,6 @@ static RB_HEAD(packet_buf_tree, packet_buf) packet_buffer_head =
 
 /*
  * TODO Timer for giving up
- * TODO RCVBT
  */
 
 static int packet_buf_cmp(struct packet_buf * a, struct packet_buf * b)
@@ -120,10 +120,10 @@ struct packet_buf * get_packet_buffer(struct ip_hdr * hdr)
 
         if (old == 0) {
             fragmap_init(&p->fragmap);
+            p->timer = XSTACK_IP_FRAGMENT_TLB;
             p->ip_hdr = *hdr; /* RFE Clear things that aren't needed. */
             p->ip_hdr.ip_foff = 0;
             p->ip_hdr.ip_len = 0;
-            /* TODO Update timer */
 
             if (RB_INSERT(packet_buf_tree, &packet_buffer_head, p)) {
                 release_packet_buffer(p);
@@ -193,12 +193,30 @@ int ip_fragment_input(struct ip_hdr * ip_hdr, uint8_t * rx_packet)
             release_packet_buffer(p);
         }
     }
-    /* TODO Update timer max(ttl, cur_timer) */
+
+    /*
+     * Commenting this out breaks the RFC but greatly reduces DOS possibilities
+     * againts the IP fragment reassembly implementation.
+     */
+#if 0
+    p->timer = imax(ip->ip_hdr.ip_ttl, p->timer);
+#endif
 
     return 0;
 }
 
 void ip_fragment_timer(int delta_time)
 {
-    /* TODO */
+    size_t i;
+    for (i = 0; i < num_elem(packet_buffer); i++) {
+        struct packet_buf * p = &packet_buffer[i];
+
+        if (!p->reserved) /* TODO not actually thread safe like the allocation. */
+            continue;
+
+        p->timer -= delta_time;
+        if (p->timer <= 0) {
+            release_packet_buffer(p);
+        }
+    }
 }

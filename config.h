@@ -57,6 +57,16 @@
 #define XSTACK_IP_SEND_HOSTUNREAC   1
 
 /**
+ * The number of buffers reserved for IP fragment reassembly.
+ */
+#define XSTACK_IP_FRAGMENT_BUF      4
+
+/**
+ * IP fragment reassembly timer lower bound.
+ */
+#define XSTACK_IP_FRAGMENT_TLB      15
+
+/**
  * @}
  */
 
