@@ -241,13 +241,17 @@ int ip_input(const struct ether_hdr * e_hdr, uint8_t * payload, size_t bsize)
 }
 ETHER_PROTO_INPUT_HANDLER(ETHER_PROTO_IPV4, ip_input);
 
+static inline size_t ip_off_round(size_t plen)
+{
+    return (plen + 7) & ~7;
+}
+
 static size_t next_fragment_size(size_t bytes, size_t hlen, size_t mtu)
 {
     size_t max, retval;
 
-    max = mtu - hlen - 8; /* RFE A kernel bug? */
+    max = ip_off_round(mtu - hlen - 8); /* RFE A kernel bug? */
     retval = (bytes < max) ? bytes : max;
-    retval = (retval + 7) & ~7;
 
     return retval;
 }
