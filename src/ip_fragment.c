@@ -157,7 +157,7 @@ int ip_fragment_input(struct ip_hdr * ip_hdr, uint8_t * rx_packet)
     memcpy(p->payload + off, rx_packet,
            ip_hdr->ip_len - ip_hdr_hlen(ip_hdr));
     for (i = off >> 3; i < (off >> 3) + ((ip_hdr->ip_len -
-                                        ip_hdr_hlen(ip_hdr) + 7) >> 3);
+                                         ip_hdr_hlen(ip_hdr) + 7) >> 3);
          i++) {
         fragmap_set(&p->fragmap, i);
     }
