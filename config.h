@@ -62,7 +62,8 @@
 #define XSTACK_IP_FRAGMENT_BUF      4
 
 /**
- * IP fragment reassembly timer lower bound.
+ * IP fragment reassembly timer lower bound [sec].
+ * The RFC recommends a default value of 15 seconds.
  */
 #define XSTACK_IP_FRAGMENT_TLB      15
 

@@ -195,8 +195,8 @@ int ip_fragment_input(struct ip_hdr * ip_hdr, uint8_t * rx_packet)
     }
 
     /*
-     * Commenting this out breaks the RFC but greatly reduces DOS possibilities
-     * againts the IP fragment reassembly implementation.
+     * Commenting out this line breaks the RFC but greatly reduces DOS
+     * possibilities againts the fragment reassembly implementation.
      */
 #if 0
     p->timer = imax(ip->ip_hdr.ip_ttl, p->timer);
@@ -211,7 +211,8 @@ void ip_fragment_timer(int delta_time)
     for (i = 0; i < num_elem(packet_buffer); i++) {
         struct packet_buf * p = &packet_buffer[i];
 
-        if (!p->reserved) /* TODO not actually thread safe like the allocation. */
+        /* TODO not actually as thread safe as the allocation. */
+        if (!p->reserved)
             continue;
 
         p->timer -= delta_time;
