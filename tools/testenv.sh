@@ -13,7 +13,6 @@ function setup {
 
 function teardown {
     ip link set dev veth0 down
-    ip link set dev veth1 down
     ip link delete veth0
     ip netns delete TEST
 }
