@@ -72,11 +72,9 @@ static void ip_defer_drop(void)
 
 void ip_defer_handler(int delta_time __unused)
 {
-    struct ip_defer * ipd;
-
     defer_inhibit = 1;
     while (1) {
-        ipd = ip_defer_peek();
+        struct ip_defer * ipd = ip_defer_peek();
         if (!ipd) {
             return;
         }

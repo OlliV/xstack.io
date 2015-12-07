@@ -62,7 +62,7 @@ static void socket_test_init(void)
     }
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char * argv[])
 {
     char * const ether_args[] = {
         argv[1],

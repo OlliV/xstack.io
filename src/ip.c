@@ -262,13 +262,14 @@ static int ip_send_fragments(int ether_handle, const mac_addr_t dst_mac,
     struct ip_hdr * ip_hdr_net = (struct ip_hdr *)payload;
     struct ip_hdr ip_hdr;
     uint8_t * data;
-    size_t hlen, plen, bytes, offset = 0;
+    size_t hlen, bytes, offset = 0;
     int retval = 0;
 
     hlen = ip_ntoh(ip_hdr_net, &ip_hdr);
     data = payload + hlen;
     bytes = bsize - hlen;
     do {
+        size_t plen;
         int eret;
 
         plen = next_fragment_size(bytes, hlen, ETHER_DATA_LEN);
