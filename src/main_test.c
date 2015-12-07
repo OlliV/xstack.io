@@ -1,28 +1,14 @@
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
+#include "xstack.h"
 #include "xstack_ether.h"
 #include "xstack_ip.h"
 #include "xstack_socket.h"
-
-static uint8_t rx_buffer[ETHER_MAXLEN];
-
-static int delta_time;
-static int eval_timer(void)
-{
-    static struct timespec start;
-    struct timespec now;
-
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    delta_time = now.tv_sec - start.tv_sec;
-    if (delta_time >= XSTACK_PERIODIC_EVENT_SEC) {
-        start = now;
-        return !0;
-    }
-    return 0;
-}
 
 void * socket_test_thread(void * arg)
 {
@@ -51,7 +37,7 @@ void * socket_test_thread(void * arg)
     pthread_exit(NULL);
 }
 
-void socket_test(void)
+static void socket_test_init(void)
 {
     static struct xstack_sock * sock;
     struct xstack_sockaddr sockaddr = {
@@ -76,14 +62,25 @@ void socket_test(void)
     }
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
     char * const ether_args[] = {
-        //"enp0s20u1",
-        "veth1",
+        argv[1],
         NULL,
     };
     int handle;
+    sigset_t sigset;
+
+    if (argc == 1) {
+        fprintf(stderr, "Usage: %s INTERFACE\n", argv[0]);
+        exit(1);
+    }
+
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGUSR1);
+
+    /* Block sigset for all future threads */
+    sigprocmask(SIG_SETMASK, &sigset, NULL);
 
     handle = ether_init(ether_args);
     if (handle == -1) {
@@ -96,39 +93,15 @@ int main(void)
         exit(1);
     }
 
-    socket_test();
+    socket_test_init();
 
-    while (1) {
-        struct ether_hdr hdr;
-        int retval;
+    xstack_start(handle);
 
-        printf("Waiting for rx\n");
-        retval = ether_receive(handle, &hdr, rx_buffer, sizeof(rx_buffer));
-        if (retval == -1) {
-            perror("Rx failed");
-        } else if (retval > 0) {
-            printf("Frame received!\n");
-            retval = ether_input(&hdr, rx_buffer, retval);
-            if (retval == -1) {
-                perror("Protocol handling failed");
-            } else if (retval > 0) {
-                retval = ether_output_reply(handle, &hdr, rx_buffer, retval);
-                if (retval < 0) {
-                    perror("Reply failed");
-                }
-            }
-        }
+    sigwaitinfo(&sigset, NULL);
 
-        if (eval_timer()) {
-            printf("tick\n");
-            ip_run_periodic_tasks(delta_time);
+    fprintf(stderr, "Stopping the IP stack...\n");
 
-            /* Testing */
-            if (ip_send(167772161, IP_PROTO_SCTP, (uint8_t *)"test", 5) < 0) {
-                perror("Failed to send");
-            }
-        }
-    }
+    xstack_stop();
 
     ether_deinit(handle);
 
