@@ -1,4 +1,5 @@
 /**
+ * Xstack sockets.
  * @addtogroup Socket
  * @{
  */
@@ -47,14 +48,19 @@ struct xstack_sock {
 };
 
 /**
+ * Max port number.
+ */
+#define XSTACK_SOCK_PORT_MAX 49151
+
+/**
  * Socket addresss descriptor.
  */
 struct xstack_sockaddr {
     union {
-        in_addr_t inet4_addr;
+        in_addr_t inet4_addr; /*!< IPv4 address. */
     };
     union {
-        int port;
+        int port; /*!< Protocol port. */
     };
 };
 
@@ -74,6 +80,8 @@ struct xstack_sock * xstack_socket(enum xstack_sock_dom dom,
  * Bind an address to a socket.
  * @param[in] sock is a pointer to the socket returned by xstack_socket().
  * @param sockaddr is the address.
+ * @returns Uppon succesful completion returns 0;
+ *          Otherwise -1 is returned and errno is set.
  */
 int xstack_bind(struct xstack_sock * sock, struct xstack_sockaddr sockaddr);
 
@@ -103,6 +111,8 @@ struct xstack_sock * xstack_accept(struct xstack_sock * sock,
  * @param bsize is the size of the buffer.
  * @param flags contains the optional flags.
  * @param[out] srcaddr returns the source address.
+ * @returns Uppon succesful completion returns 0;
+ *          Otherwise -1 is returned and errno is set.
  */
 int xstack_recvfrom(struct xstack_sock * sock, void * buf, size_t bsize,
                     unsigned flags, struct xstack_sockaddr * srcaddr);
@@ -113,6 +123,8 @@ int xstack_recvfrom(struct xstack_sock * sock, void * buf, size_t bsize,
  * @param buf is a pointer to the buffer to be transmitted.
  * @param bsize is the size of the buffer.
  * @param flags contains the optional flags.
+ * @returns Uppon succesful completion returns 0;
+ *          Otherwise -1 is returned and errno is set.
  */
 int xstack_send(struct xstack_sock * sock, void * buf, size_t bsize,
                 unsigned flags);

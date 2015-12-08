@@ -1,4 +1,5 @@
 /**
+ * Xstack IP service.
  * @addtogroup IP
  * @{
  */

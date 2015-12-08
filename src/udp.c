@@ -14,16 +14,14 @@
 #include "logger.h"
 #include "tree.h"
 
-#define UDP_PORT_MAX 100
-
 struct udp_socket {
-    in_addr_t inet4_addr;
-    struct xstack_sock * portmap[UDP_PORT_MAX];
+    struct xstack_sockaddr addr;
+    struct xstack_sock * sock;
     RB_ENTRY(udp_socket) _entry;
 };
 
 struct udp_socket_find {
-    in_addr_t inet4_addr;
+    struct xstack_sockaddr addr;
 };
 
 static RB_HEAD(udp_socket_tree, udp_socket) upd_socket_tree_head =
@@ -31,15 +29,15 @@ static RB_HEAD(udp_socket_tree, udp_socket) upd_socket_tree_head =
 
 static int udp_socket_cmp(struct udp_socket * a, struct udp_socket * b)
 {
-    return a->inet4_addr - b->inet4_addr;
+    return memcmp(&a->addr, &b->addr, sizeof(struct xstack_sockaddr));
 }
 
 RB_GENERATE_STATIC(udp_socket_tree, udp_socket, _entry, udp_socket_cmp);
 
-static struct udp_socket * find_udp_socket(in_addr_t addr)
+static struct udp_socket * find_udp_socket(const struct xstack_sockaddr * addr)
 {
     struct udp_socket_find find = {
-        .inet4_addr = addr,
+        .addr = *addr,
     };
 
     return RB_FIND(udp_socket_tree, &upd_socket_tree_head,
@@ -63,38 +61,36 @@ static void udp_ntoh(const struct udp_hdr * net, struct udp_hdr * host)
 int xstack_udp_bind(struct xstack_sock * sock,
                     const struct xstack_sockaddr * sockaddr)
 {
-    int port = sockaddr->port;
     struct udp_socket * udp_sock;
 
-    if (sockaddr->port >= UDP_PORT_MAX) {
+    if (sockaddr->port > XSTACK_SOCK_PORT_MAX) {
         errno = EINVAL;
         return -1;
     }
 
-    udp_sock = find_udp_socket(sockaddr->inet4_addr);
-    if (!udp_sock) {
-        udp_sock = calloc(1, sizeof(struct udp_socket));
-        if (!udp_sock) {
-            errno = ENOMEM;
-            return -1;
-        }
-        udp_sock->inet4_addr = sockaddr->inet4_addr;
-        RB_INSERT(udp_socket_tree, &upd_socket_tree_head, udp_sock);
-    }
-
-    if (udp_sock->portmap[port]) {
+    udp_sock = find_udp_socket(sockaddr);
+    if (udp_sock) {
         errno = EADDRINUSE;
         return -1;
-    } else {
-        udp_sock->portmap[port] = sock;
-        return 0;
     }
+
+    udp_sock = calloc(1, sizeof(struct udp_socket));
+    if (!udp_sock) {
+        errno = ENOMEM;
+        return -1;
+    }
+    udp_sock->addr = *sockaddr;
+    udp_sock->sock = sock;
+    RB_INSERT(udp_socket_tree, &upd_socket_tree_head, udp_sock);
+
+    return 0;
 }
 
 static int udp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsize)
 {
     struct udp_hdr * udp = (struct udp_hdr *)payload;
     struct udp_socket * udp_sock;
+    struct xstack_sockaddr sockaddr;
 
     if (bsize < sizeof(struct udp_hdr)) {
         LOG(LOG_INFO, "Datagram size too small");
@@ -104,16 +100,17 @@ static int udp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsi
 
     udp_ntoh(udp, udp);
 
-    udp_sock = find_udp_socket(ip_hdr->ip_dst);
-    if (udp_sock && udp->udp_dport < UDP_PORT_MAX &&
-        udp_sock->portmap[udp->udp_dport]) {
+    sockaddr.inet4_addr = ip_hdr->ip_dst;
+    sockaddr.port = udp->udp_dport;
+    udp_sock = find_udp_socket(&sockaddr);
+    if (udp_sock) {
         int retval;
         struct xstack_sockaddr srcaddr = {
             .inet4_addr = ip_hdr->ip_src,
             .port = udp->udp_sport,
         };
 
-        retval =_xstack_sock_dgram_input(udp_sock->portmap[udp->udp_dport],
+        retval =_xstack_sock_dgram_input(udp_sock->sock,
                                          &srcaddr,
                                          payload + sizeof(struct udp_hdr),
                                          bsize - sizeof(struct udp_hdr));

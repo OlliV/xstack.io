@@ -1,5 +1,6 @@
 /**
- * @addtogroup xstack
+ * Xstack control functions.
+ * @addtogroup Xstack
  * @{
  */
 

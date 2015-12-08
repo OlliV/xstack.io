@@ -2,11 +2,9 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "xstack.h"
-#include "xstack_ether.h"
 #include "xstack_ip.h"
 #include "xstack_socket.h"
 
