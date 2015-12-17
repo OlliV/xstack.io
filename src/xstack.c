@@ -20,14 +20,20 @@
 #include "udp.h"
 #include "xstack_internal.h"
 
+/**
+ * Xstack ingress and egress thread state.
+ */
 enum xstack_state {
-    XSTACK_STOPPED = 0,
-    XSTACK_RUNNING,
-    XSTACK_DYING,
+    XSTACK_STOPPED = 0, /*!< Ingress and egress threads are not running. */
+    XSTACK_RUNNING,     /*!< Ingress and egress threads are running. */
+    XSTACK_DYING,       /*!< Waiting for ingress and engress threads to stop. */
 };
 
 SET_DECLARE(_xstack_periodic_tasks, void);
 
+/*
+ * Xstack state variables.
+ */
 static pthread_mutex_t xstack_mutex = PTHREAD_MUTEX_INITIALIZER;
 static enum xstack_state xstack_state = XSTACK_STOPPED;
 static int ether_handle;

@@ -90,6 +90,10 @@ int xstack_udp_bind(struct xstack_sock * sock,
     return 0;
 }
 
+/**
+ * UDP input chain.
+ * IP -> UDP
+ */
 static int udp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsize)
 {
     struct udp_hdr * udp = (struct udp_hdr *)payload;
@@ -158,6 +162,9 @@ int xstack_udp_send(int fd, const struct xstack_send_args * args)
     struct udp_socket * udp_sock = container_of(args->sock, struct udp_socket,
                                                 sock);
 
+    /*
+     * UDP Header.
+     */
     udp->udp_sport = udp_sock->addr.port;
     udp->udp_dport = args->dstaddr.port;
     udp->udp_len = sizeof(struct udp_hdr) + args->buf_size;
