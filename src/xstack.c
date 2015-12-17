@@ -2,12 +2,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <signal.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "linker_set.h"
@@ -34,16 +29,9 @@ SET_DECLARE(_xstack_periodic_tasks, void);
 /*
  * Xstack state variables.
  */
-static pthread_mutex_t xstack_mutex = PTHREAD_MUTEX_INITIALIZER;
 static enum xstack_state xstack_state = XSTACK_STOPPED;
 static int ether_handle;
 static pthread_t ingress_tid, egress_tid;
-static fd_set xstack_egress_fds;
-
-__attribute__((constructor)) static void xstack_init(void)
-{
-    FD_ZERO(&xstack_egress_fds);
-}
 
 static enum xstack_state get_state(void)
 {
@@ -153,20 +141,6 @@ static void * xstack_ingress_thread(void * arg)
     pthread_exit(NULL);
 }
 
-void xstack_egress_add_fd(int fildes)
-{
-    pthread_mutex_lock(&xstack_mutex);
-    FD_SET(fildes, &xstack_egress_fds);
-    pthread_mutex_unlock(&xstack_mutex);
-}
-
-void xstack_egress_rm_fd(int fildes)
-{
-    pthread_mutex_lock(&xstack_mutex);
-    FD_CLR(fildes, &xstack_egress_fds);
-    pthread_mutex_unlock(&xstack_mutex);
-}
-
 /**
  * Handle the egress traffic.
  * All egress traffic is mux'd and serialized through one egress pipe.
@@ -174,49 +148,26 @@ void xstack_egress_rm_fd(int fildes)
  */
 static void * xstack_egress_thread(void * arg)
 {
-    static fd_set fds;
-    int res;
-
     while (1) {
+        int fd;
+        struct xstack_send_args args;
         struct timeval timeout = {
             .tv_sec = XSTACK_PERIODIC_EVENT_SEC,
             .tv_usec = 0,
         };
 
-        /*
-         * Wait for outgoing datagrams to be available.
-         */
-        do {
-            pthread_mutex_lock(&xstack_mutex);
-            /* TODO Nonportable? */
-            memcpy(&fds, &xstack_egress_fds, sizeof(fd_set));
-            pthread_mutex_unlock(&xstack_mutex);
-
-            res = select(FD_SETSIZE, &fds, NULL, NULL, &timeout);
-        } while (res == -1 && errno == EINTR);
-
-        /*
-         * Iterate through all possible fds because that's the only portable way
-         * to figure out which fds are set :(
-         */
-        for (size_t fd = 0; fd < FD_SETSIZE; ++fd) {
-            if (FD_ISSET(fd, &fds)) {
-                struct xstack_send_args args;
-
-                read(fd, &args, sizeof(args));
-                /* TODO If read() returns 0 => EOF */
-
-                LOG(LOG_DEBUG, "Sending a datagram");
-                switch (args.sock->sock_proto) {
-                case XIP_PROTO_UDP:
-                    if (args.buf_size > 0 &&  args.buf_size < UDP_MAXLEN &&
-                        xstack_udp_send(fd, &args) >= 0) {
-                        break;
-                    }
-                    /* Fallthrough */
-                default:
-                    LOG(LOG_ERR, "Failed to send a datagram");
+        fd = xstack_wait4egress_packet(&args, &timeout);
+        if (fd != -1) {
+            LOG(LOG_DEBUG, "Sending a datagram");
+            switch (args.sock->sock_proto) {
+            case XIP_PROTO_UDP:
+                if (args.buf_size > 0 && args.buf_size < UDP_MAXLEN &&
+                    xstack_udp_send(fd, &args) >= 0) {
+                    break;
                 }
+                /* Fallthrough */
+            default:
+                LOG(LOG_ERR, "Failed to send a datagram");
             }
         }
 
@@ -232,7 +183,6 @@ int xstack_start(int handle)
 {
     ether_handle = handle;
 
-    pthread_mutex_lock(&xstack_mutex);
     if (get_state() != XSTACK_STOPPED) {
         errno = EALREADY;
         goto fail;
@@ -251,10 +201,8 @@ int xstack_start(int handle)
     pthread_setname_np(egress_tid, "xstack ingress");
 
     set_state(XSTACK_RUNNING);
-    pthread_mutex_unlock(&xstack_mutex);
     return 0;
 fail:
-    pthread_mutex_unlock(&xstack_mutex);
     return -1;
 }
 
