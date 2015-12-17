@@ -6,6 +6,7 @@
 #include "xstack_ip.h"
 
 #include "logger.h"
+#include "xstack_internal.h"
 
 struct ip_defer {
     int tries;
@@ -98,4 +99,4 @@ void ip_defer_handler(int delta_time __unused)
     }
     defer_inhibit = 0;
 }
-IP_PERIODIC_TASK(ip_defer_handler);
+XSTACK_PERIODIC_TASK(ip_defer_handler);

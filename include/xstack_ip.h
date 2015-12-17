@@ -105,14 +105,6 @@ struct _ip_proto_handler {
     };                                                                      \
     DATA_SET(_ip_proto_handlers, _ip_proto_handler_##_handler_fn_)
 
-typedef void ip_periodic_task_t(int delta_time);
-
-/**
- * Declare a periodic IP task.
- */
-#define IP_PERIODIC_TASK(_task_fn_) \
-    DATA_SET(_ip_periodic_tasks, _task_fn_)
-
 int ip_config(int ether_handle, in_addr_t ip_addr, in_addr_t netmask);
 
 /**
@@ -205,11 +197,6 @@ size_t ip_reply_header(struct ip_hdr * host_ip_hdr, size_t bsize);
  * Send an IP packet to a destination.
  */
 int ip_send(in_addr_t dst, uint8_t proto, const uint8_t * buf, size_t bsize);
-
-/**
- * Execute registered periodic tasks.
- */
-void ip_run_periodic_tasks(int delta_time);
 
 /**
  * IP Fragmentation

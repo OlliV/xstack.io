@@ -9,6 +9,7 @@
 #include "ip_defer.h"
 #include "logger.h"
 #include "tree.h"
+#include "xstack_internal.h"
 
 #define ARP_CACHE_AGE_MAX (20 * 60 * 60) /* Expiration time */
 
@@ -150,7 +151,7 @@ static void arp_cache_update(int delta_time)
         }
     }
 }
-IP_PERIODIC_TASK(arp_cache_update);
+XSTACK_PERIODIC_TASK(arp_cache_update);
 
 static int arp_input(const struct ether_hdr * hdr __unused, uint8_t * payload,
                      size_t bsize)

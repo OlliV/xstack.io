@@ -10,7 +10,6 @@
 #include "logger.h"
 
 SET_DECLARE(_ip_proto_handlers, struct _ip_proto_handler);
-SET_DECLARE(_ip_periodic_tasks, void);
 
 static unsigned ip_global_id; /* Global ID for IP packets. */
 
@@ -75,18 +74,6 @@ uint16_t ip_checksum(void * dp, size_t bsize)
     }
 
     return ~acc;
-}
-
-void ip_run_periodic_tasks(int delta_time)
-{
-    void ** taskp;
-
-    SET_FOREACH(taskp, _ip_periodic_tasks) {
-        ip_periodic_task_t * task = *(ip_periodic_task_t **)taskp;
-
-        if (task)
-            task(delta_time);
-    }
 }
 
 void ip_hton(const struct ip_hdr * host, struct ip_hdr * net)

@@ -122,16 +122,14 @@ int xstack_recvfrom(struct xstack_sock * sock, void * buf, size_t bsize,
  * @param sock[in] sock is a pointer to the socket returned by xstack_socket().
  * @param buf is a pointer to the buffer to be transmitted.
  * @param bsize is the size of the buffer.
+ * @param dstaddr is the destination address used by stateless protocols,
+ *                can be NULL.
  * @param flags contains the optional flags.
  * @returns Uppon succesful completion returns 0;
  *          Otherwise -1 is returned and errno is set.
  */
 int xstack_send(struct xstack_sock * sock, void * buf, size_t bsize,
-                unsigned flags);
-
-int _xstack_sock_dgram_input(struct xstack_sock * sock,
-                             struct xstack_sockaddr * srcaddr,
-                             uint8_t * buf, size_t bsize);
+                const struct xstack_sockaddr * dstaddr, unsigned flags);
 
 #endif /* XSTACK_SOCKET_H */
 

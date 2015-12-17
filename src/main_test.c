@@ -29,6 +29,13 @@ void * socket_test_thread(void * arg)
 
             ip2str(sockaddr.inet4_addr, ipstr);
             printf("Received %d bytes over UDP from %s\n", retval, ipstr);
+
+            retval = xstack_send(sock, buf, retval, &sockaddr, 0);
+            if (retval == -1) {
+                perror("Failed to send a response");
+            } else {
+                printf("Response sent to %s:%d\n", ipstr, sockaddr.port);
+            }
         }
     }
 
@@ -73,6 +80,8 @@ int main(int argc, char * argv[])
         fprintf(stderr, "Usage: %s INTERFACE\n", argv[0]);
         exit(1);
     }
+
+    //kill(getpid(), SIGSTOP);
 
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGUSR1);

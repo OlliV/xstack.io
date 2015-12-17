@@ -5,13 +5,15 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "xstack.h"
 #include "xstack_in.h"
 #include "xstack_ip.h"
 #include "xstack_socket.h"
-#include "xstack_udp.h"
 
 #include "logger.h"
 #include "queue.h"
+#include "udp.h"
+#include "xstack_internal.h"
 
 struct xstack_sock * xstack_socket(enum xstack_sock_dom dom,
                                    enum xstack_sock_type type,
@@ -33,9 +35,16 @@ struct xstack_sock * xstack_socket(enum xstack_sock_dom dom,
         return NULL;
     }
 
-    sock = malloc(sizeof(struct xstack_sock));
-    if (!sock) {
-        errno = ENOMEM;
+    switch (proto) {
+    case XIP_PROTO_UDP:
+        sock = xstack_udp_alloc_sock();
+        if (!sock) {
+            errno = ENOMEM;
+            return NULL;
+        }
+        break;
+    default:
+        errno = EPROTOTYPE;
         return NULL;
     }
 
@@ -44,6 +53,8 @@ struct xstack_sock * xstack_socket(enum xstack_sock_dom dom,
         free(sock);
         return NULL;
     }
+
+    xstack_egress_add_fd(sock->egress[0]);
 
     sock->sock_dom = dom;
     sock->sock_type = type;
@@ -65,6 +76,7 @@ int xstack_bind(struct xstack_sock * sock, struct xstack_sockaddr sockaddr)
 
 int xstack_listen(struct xstack_sock * sock, int backlog)
 {
+    /* TODO */
     errno = ENOTSUP;
     return -1;
 }
@@ -72,6 +84,7 @@ int xstack_listen(struct xstack_sock * sock, int backlog)
 struct xstack_sock * xstack_accept(struct xstack_sock * sock,
                                    struct xstack_sockaddr * cliaddr)
 {
+    /* TODO */
     return NULL;
 }
 
@@ -89,22 +102,43 @@ int xstack_recvfrom(struct xstack_sock * sock, void * buf, size_t bsize,
 }
 
 int xstack_send(struct xstack_sock * sock, void * buf, size_t bsize,
-                unsigned flags)
+                const struct xstack_sockaddr * dstaddr, unsigned flags)
 {
     int fd = sock->egress[1];
+    struct xstack_send_args args = {
+        .sock = sock,
+        .buf_size = bsize,
+        .flags = flags,
+    };
 
-    /* TODO write header */
+    /*
+     * dstaddr is only necessary for stateless protocols.
+     */
+    if (dstaddr) {
+        args.dstaddr = *dstaddr;
+    }
+
+    /*
+     * Datagrams in egress chain are delivered as two packets, first comes
+     * the descriptor and the second packet is the actual datagram contents.
+     */
+    write(fd, &args, sizeof(args));
     return (int)write(fd, buf, bsize);
 }
 
-int _xstack_sock_dgram_input(struct xstack_sock * sock,
-                             struct xstack_sockaddr * srcaddr,
-                             uint8_t * buf, size_t bsize)
+int xstack_sock_dgram_input(struct xstack_sock * sock,
+                            struct xstack_sockaddr * srcaddr,
+                            uint8_t * buf, size_t bsize)
 {
     int fd = sock->ingress[1];
 
-    write(fd, srcaddr, sizeof(struct xstack_sockaddr));
-    write(fd, buf, bsize);
-
-    return 0;
+    /*
+     * Datagrams in ingress chain are delivered as two packets, first comes
+     * the xstack_sockaddr and the second packet is the actual datagram
+     * contents.
+     */
+    if (write(fd, srcaddr, sizeof(struct xstack_sockaddr)) == -1) {
+        return -errno;
+    }
+    return (write(fd, buf, bsize) != -1) ? 0 : -errno;
 }
