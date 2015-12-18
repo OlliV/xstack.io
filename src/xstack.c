@@ -113,12 +113,7 @@ static void * xstack_ingress_thread(void * arg)
 
             retval = ether_input(&hdr, rx_buffer, retval);
             if (retval == -1) {
-                if (errno == EPIPE) {
-                    /* EPIPE means that the other end is closed. */
-                    /* TODO Handle closing of the pipe */
-                } else {
-                    LOG(LOG_ERR, "Protocol handling failed: %d", errno);
-                }
+                LOG(LOG_ERR, "Protocol handling failed: %d", errno);
             } else if (retval > 0) {
                 retval = ether_output_reply(ether_handle, &hdr, rx_buffer,
                                             retval);
@@ -148,6 +143,8 @@ static void * xstack_ingress_thread(void * arg)
  */
 static void * xstack_egress_thread(void * arg)
 {
+    block_sigpipe();
+
     while (1) {
         int fd;
         struct xstack_send_args args;

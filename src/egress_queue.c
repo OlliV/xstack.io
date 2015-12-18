@@ -108,9 +108,6 @@ int xstack_wait4egress_packet(struct xstack_send_args * args_out,
 
         if (FD_ISSET(fd, &wait_fd_set)) {
             read(fd, args_out, sizeof(struct xstack_send_args));
-            /* TODO If read() returns 0 => EOF */
-
-            return fd;
         }
     }
 
