@@ -185,22 +185,20 @@ int xstack_start(int handle)
 
     if (get_state() != XSTACK_STOPPED) {
         errno = EALREADY;
-        goto fail;
+        return -1;
     }
 
     if (pthread_create(&ingress_tid, NULL, xstack_ingress_thread, NULL)) {
-        goto fail;
+        return -1;
     }
 
     if (pthread_create(&egress_tid, NULL, xstack_egress_thread, NULL)) {
         pthread_cancel(ingress_tid);
-        goto fail;
+        return -1;
     }
 
     set_state(XSTACK_RUNNING);
     return 0;
-fail:
-    return -1;
 }
 
 void xstack_stop(void)
