@@ -6,6 +6,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+/**
+ * Disable or enable logging.
+ */
+#define XSTACK_LOGGING              1
 
 /**
  * Periodic IP event tick.
