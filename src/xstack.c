@@ -197,9 +197,6 @@ int xstack_start(int handle)
         goto fail;
     }
 
-    pthread_setname_np(ingress_tid, "xstack ingress");
-    pthread_setname_np(egress_tid, "xstack ingress");
-
     set_state(XSTACK_RUNNING);
     return 0;
 fail:
