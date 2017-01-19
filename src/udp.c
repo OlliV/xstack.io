@@ -154,13 +154,17 @@ static int udp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsi
 }
 IP_PROTO_INPUT_HANDLER(IP_PROTO_UDP, udp_input);
 
-int xstack_udp_send(int fd, const struct xstack_send_args * args)
+int xstack_udp_send(int fd, const struct xstack_cmsg_dgram_send * args)
 {
     uint8_t buf[sizeof(struct udp_hdr) + args->buf_size];
     struct udp_hdr * udp = (struct udp_hdr *)buf;
     uint8_t * payload = udp->data;
     struct udp_socket * udp_sock = container_of(args->sock, struct udp_socket,
                                                 sock);
+
+    if (!(args->buf_size > 0 && args->buf_size < UDP_MAXLEN)) {
+        return -EINVAL;
+    }
 
     /*
      * UDP Header.

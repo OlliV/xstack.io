@@ -5,7 +5,19 @@
 
 #include "xstack_socket.h"
 
-struct xstack_send_args {
+#define XSTACK_CTRL_FLAG_DYING 0x8000
+
+struct xstack_control_message {
+    unsigned ctrl_flags;
+};
+
+struct xstack_cmsg_dgram_input {
+    struct xstack_control_message ctrl;
+    struct xstack_sockaddr srcaddr;
+};
+
+struct xstack_cmsg_dgram_send {
+    struct xstack_control_message ctrl;
     struct xstack_sock * sock;
     struct xstack_sockaddr dstaddr; /* For stateless protocols */
     size_t buf_size;
@@ -25,8 +37,8 @@ typedef void xstack_periodic_task_t(int delta_time);
  * @{
  */
 void xstack_egress_add_fd(int fildes);
-void xstack_egress_rm_fd(int fildes);
-int xstack_wait4egress_packet(struct xstack_send_args * args_out,
+void xstack_egress_del_fd(int fildes);
+int xstack_wait4egress_packet(struct xstack_cmsg_dgram_send * args_out,
                               struct timeval *timeout);
 /**
  *
@@ -44,6 +56,8 @@ int xstack_wait4egress_packet(struct xstack_send_args * args_out,
 int xstack_sock_dgram_input(struct xstack_sock * sock,
                             struct xstack_sockaddr * srcaddr,
                             uint8_t * buf, size_t bsize);
+
+typedef int xstack_send_fn(int fd, const struct xstack_cmsg_dgram_send * args);
 
 /**
  * @}

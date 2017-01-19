@@ -32,8 +32,10 @@ enum xstack_sock_type {
  * Socket protocol.
  */
 enum xstack_sock_proto {
+    XIP_PROTO_NONE = 0,
     XIP_PROTO_TCP, /*!< TCP/IP. */
     XIP_PROTO_UDP, /*!< UDP/IP. */
+    XIP_PROTO_LAST
 };
 
 /**
@@ -130,6 +132,12 @@ int xstack_recvfrom(struct xstack_sock * sock, void * buf, size_t bsize,
  */
 int xstack_send(struct xstack_sock * sock, void * buf, size_t bsize,
                 const struct xstack_sockaddr * dstaddr, unsigned flags);
+
+/**
+ * Close a socket.
+ * @param sock[in] sock is a pointer to the socket returned by xstack_socket().
+ */
+void xstack_close(struct xstack_sock * sock);
 
 #endif /* XSTACK_SOCKET_H */
 

@@ -67,7 +67,7 @@ void xstack_egress_add_fd(int fildes)
     pthread_mutex_unlock(&queue_mutex);
 }
 
-void xstack_egress_rm_fd(int fildes)
+void xstack_egress_del_fd(int fildes)
 {
     int * fdp;
 
@@ -82,7 +82,7 @@ void xstack_egress_rm_fd(int fildes)
 
 static int wait_fds[FD_SETSIZE];
 static fd_set wait_fd_set;
-int xstack_wait4egress_packet(struct xstack_send_args * args_out,
+int xstack_wait4egress_packet(struct xstack_cmsg_dgram_send * args_out,
                               struct timeval *timeout)
 {
     int res;
@@ -107,7 +107,7 @@ int xstack_wait4egress_packet(struct xstack_send_args * args_out,
         int fd = wait_fds[i];
 
         if (FD_ISSET(fd, &wait_fd_set)) {
-            read(fd, args_out, sizeof(struct xstack_send_args));
+            read(fd, args_out, sizeof(struct xstack_cmsg_dgram_send));
         }
     }
 

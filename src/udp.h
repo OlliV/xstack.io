@@ -31,7 +31,7 @@ struct udp_hdr {
 };
 
 struct xstack_sockaddr;
-struct xstack_send_args;
+struct xstack_cmsg_dgram_send;
 
 /**
  * Allocate a UDP socket descriptor.
@@ -41,7 +41,7 @@ struct xstack_sock * xstack_udp_alloc_sock(void);
 int xstack_udp_bind(struct xstack_sock * sock,
                     const struct xstack_sockaddr * sockaddr);
 
-int xstack_udp_send(int fd, const struct xstack_send_args * args);
+int xstack_udp_send(int fd, const struct xstack_cmsg_dgram_send * args);
 
 #endif /* XSTACK_UDP_H */
 

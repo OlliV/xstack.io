@@ -136,6 +136,10 @@ static void * xstack_ingress_thread(void * arg)
     pthread_exit(NULL);
 }
 
+xstack_send_fn * proto_send[] = {
+    [XIP_PROTO_UDP] = xstack_udp_send,
+};
+
 /**
  * Handle the egress traffic.
  * All egress traffic is mux'd and serialized through one egress pipe.
@@ -147,7 +151,7 @@ static void * xstack_egress_thread(void * arg)
 
     while (1) {
         int fd;
-        struct xstack_send_args args;
+        struct xstack_cmsg_dgram_send args;
         struct timeval timeout = {
             .tv_sec = XSTACK_PERIODIC_EVENT_SEC,
             .tv_usec = 0,
@@ -155,16 +159,16 @@ static void * xstack_egress_thread(void * arg)
 
         fd = xstack_wait4egress_packet(&args, &timeout);
         if (fd != -1) {
+            enum xstack_sock_proto proto = args.sock->sock_proto;
+
             LOG(LOG_DEBUG, "Sending a datagram");
-            switch (args.sock->sock_proto) {
-            case XIP_PROTO_UDP:
-                if (args.buf_size > 0 && args.buf_size < UDP_MAXLEN &&
-                    xstack_udp_send(fd, &args) >= 0) {
-                    break;
+            if (args.sock->sock_proto > XIP_PROTO_NONE &&
+                args.sock->sock_proto < XIP_PROTO_LAST) {
+                if (proto_send[proto](fd, &args) < 0) {
+                    LOG(LOG_ERR, "Failed to send a datagram");
                 }
-                /* Fallthrough */
-            default:
-                LOG(LOG_ERR, "Failed to send a datagram");
+            } else {
+                LOG(LOG_ERR, "Invalid protocol");
             }
         }
 

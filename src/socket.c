@@ -92,11 +92,11 @@ int xstack_recvfrom(struct xstack_sock * sock, void * buf, size_t bsize,
                     unsigned flags, struct xstack_sockaddr * srcaddr)
 {
     int fd = sock->ingress[0];
-    struct xstack_sockaddr src;
+    struct xstack_cmsg_dgram_input ctrl_msg;
 
-    read(fd, &src, sizeof(struct xstack_sockaddr));
+    read(fd, &ctrl_msg, sizeof(ctrl_msg));
     if (srcaddr) {
-        *srcaddr = src;
+        *srcaddr = ctrl_msg.srcaddr;
     }
     return (int)read(fd, buf, bsize);
 }
@@ -105,7 +105,8 @@ int xstack_send(struct xstack_sock * sock, void * buf, size_t bsize,
                 const struct xstack_sockaddr * dstaddr, unsigned flags)
 {
     int fd = sock->egress[1];
-    struct xstack_send_args args = {
+    struct xstack_cmsg_dgram_send args = {
+        .ctrl.ctrl_flags = 0,
         .sock = sock,
         .buf_size = bsize,
         .flags = flags,
@@ -126,18 +127,39 @@ int xstack_send(struct xstack_sock * sock, void * buf, size_t bsize,
     return (int)write(fd, buf, bsize);
 }
 
+void xstack_close(struct xstack_sock * sock)
+{
+    int * i = &sock->ingress[0];
+    int * e = &sock->egress[1];
+
+    /* TODO Send control message to close the reading end in egress */
+
+    close(*i);
+    close(*e);
+
+    /*
+     * Mark file descriptors closed.
+     */
+    *i = -1;
+    *e = -1;
+}
+
 int xstack_sock_dgram_input(struct xstack_sock * sock,
                             struct xstack_sockaddr * srcaddr,
                             uint8_t * buf, size_t bsize)
 {
     int fd = sock->ingress[1];
+    struct xstack_cmsg_dgram_input ctrl_msg = {
+        .ctrl.ctrl_flags = 0,
+        .srcaddr = *srcaddr,
+    };
 
     /*
      * Datagrams in ingress chain are delivered as two packets, first comes
-     * the xstack_sockaddr and the second packet is the actual datagram
+     * the control message and the second packet is the actual datagram
      * contents.
      */
-    if (write(fd, srcaddr, sizeof(struct xstack_sockaddr)) == -1) {
+    if (write(fd, &ctrl_msg, sizeof(ctrl_msg)) == -1) {
         return -errno;
     }
     return (write(fd, buf, bsize) != -1) ? 0 : -errno;
