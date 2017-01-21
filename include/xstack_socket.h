@@ -8,9 +8,28 @@
 #define XSTACK_SOCKET_H
 
 #include <stdint.h>
+#include <sys/types.h>
 
 #include "linker_set.h"
+#include "queue_r.h"
 #include "xstack_in.h"
+
+#define XSTACK_SHMEM_SIZE \
+    (2 * sizeof(struct queue_cb) + 2 * XSTACK_DATAGRAM_BUF_SIZE)
+
+#define XSTACK_INGRESS_QADDR(x) \
+    ((struct queue_cb *)(x))
+
+#define XSTACK_INGRESS_DADDR(x) \
+    ((uint8_t *)((uintptr_t)(x) + sizeof(struct queue_cb)))
+
+#define XSTACK_EGRESS_QADDR(x) \
+    ((struct queue_cb *)((uintptr_t)(x) + sizeof(struct queue_cb) + \
+                        XSTACK_DATAGRAM_BUF_SIZE))
+
+#define XSTACK_EGRESS_DADDR(x) \
+    ((uint8_t *)(XSTACK_INGRESS_DADDR(x) + XSTACK_DATAGRAM_BUF_SIZE + \
+             sizeof(struct queue_cb)))
 
 /**
  * Socket domain.
@@ -39,17 +58,6 @@ enum xstack_sock_proto {
 };
 
 /**
- * A generic socket descriptor.
- */
-struct xstack_sock {
-    enum xstack_sock_dom sock_dom;
-    enum xstack_sock_type sock_type;
-    enum xstack_sock_proto sock_proto;
-    int ingress[2];
-    int egress[2];
-};
-
-/**
  * Max port number.
  */
 #define XSTACK_SOCK_PORT_MAX 49151
@@ -66,78 +74,26 @@ struct xstack_sockaddr {
     };
 };
 
-/**
- * Create a endpoint socket for communication.
- * @param dom selects the socket domain.
- * @param type selects the socket type.
- * @param proto selects the protocol used.
- * @returns Uppon succesful completion returns a pointer to the socket;
- *          Otherwise a NULL pointer is returned.
- */
-struct xstack_sock * xstack_socket(enum xstack_sock_dom dom,
-                                   enum xstack_sock_type type,
-                                   enum xstack_sock_proto proto);
+struct xstack_sock_info {
+    enum xstack_sock_dom sock_dom;
+    enum xstack_sock_type sock_type;
+    enum xstack_sock_proto sock_proto;
+    struct xstack_sockaddr sock_addr;
+    pid_t pid_inetd;
+} info;
 
-/**
- * Bind an address to a socket.
- * @param[in] sock is a pointer to the socket returned by xstack_socket().
- * @param sockaddr is the address.
- * @returns Uppon succesful completion returns 0;
- *          Otherwise -1 is returned and errno is set.
- */
-int xstack_bind(struct xstack_sock * sock, struct xstack_sockaddr sockaddr);
+struct xstack_dgram {
+    struct xstack_sock_info sock_info;
+    struct xstack_sockaddr addr;
+    size_t buf_size;
+    uint8_t buf[0];
+};
 
-/**
- * Start listening on a stream socket.
- * @param[in] sock is a pointer to the socket returned by xstack_socket().
- * @param backlog is maximum number of pending connections.
- * @returns Uppon succesful completion returns 0;
- *          Otherwise -1 is returned and errno is set.
- */
-int xstack_listen(struct xstack_sock * sock, int backlog);
-
-/**
- * Accept a new connection on a socket.
- * param[in] sock is a pointer to the socket returned by xstack_socket().
- * @param[out] cliaddr is used to return the client address.
- * @returns Returns a pointer to a xstack_sock struct describing the accepted
- *          socket.
- */
-struct xstack_sock * xstack_accept(struct xstack_sock * sock,
-                                   struct xstack_sockaddr * cliaddr);
-
-/**
- * Receive from a socket.
- * @param[in] sock is a pointer to the socket returned by xstack_socket().
- * @param buf is a pointer to the buffer.
- * @param bsize is the size of the buffer.
- * @param flags contains the optional flags.
- * @param[out] srcaddr returns the source address.
- * @returns Uppon succesful completion returns 0;
- *          Otherwise -1 is returned and errno is set.
- */
-int xstack_recvfrom(struct xstack_sock * sock, void * buf, size_t bsize,
-                    unsigned flags, struct xstack_sockaddr * srcaddr);
-
-/**
- * Send to a socket.
- * @param sock[in] sock is a pointer to the socket returned by xstack_socket().
- * @param buf is a pointer to the buffer to be transmitted.
- * @param bsize is the size of the buffer.
- * @param dstaddr is the destination address used by stateless protocols,
- *                can be NULL.
- * @param flags contains the optional flags.
- * @returns Uppon succesful completion returns 0;
- *          Otherwise -1 is returned and errno is set.
- */
-int xstack_send(struct xstack_sock * sock, void * buf, size_t bsize,
-                const struct xstack_sockaddr * dstaddr, unsigned flags);
-
-/**
- * Close a socket.
- * @param sock[in] sock is a pointer to the socket returned by xstack_socket().
- */
-void xstack_close(struct xstack_sock * sock);
+void * xstack_listen(const char * socket_path);
+ssize_t xstack_recvfrom(void * socket, void * restrict buffer, size_t length,
+                        int flags, struct xstack_sockaddr * restrict address);
+ssize_t xstack_sendto(void * socket, const void * buffer, size_t length,
+                      int flags, const struct xstack_sockaddr * dest_addr);
 
 #endif /* XSTACK_SOCKET_H */
 

@@ -11,6 +11,10 @@
  */
 #define XSTACK_LOGGING              1
 
+#define XSTACK_DATAGRAM_SIZE_MAX    1024
+
+#define XSTACK_DATAGRAM_BUF_SIZE    2048
+
 /**
  * Periodic IP event tick.
  * How often should periodic tasks run.

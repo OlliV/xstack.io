@@ -4,47 +4,43 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "xstack.h"
 #include "xstack_arp.h"
-#include "xstack_icmp.h"
 #include "xstack_in.h"
-#include "xstack_ip.h"
 #include "xstack_socket.h"
 
 #include "ip_defer.h"
 #include "logger.h"
-#include "tree.h"
 #include "udp.h"
+#include "xstack_icmp.h"
 #include "xstack_internal.h"
-
-struct udp_socket {
-    struct xstack_sockaddr addr;
-    struct xstack_sock sock;
-    RB_ENTRY(udp_socket) _entry;
-};
+#include "xstack_ip.h"
 
 struct udp_socket_find {
-    struct xstack_sockaddr addr;
+    /* Should be same as static entries in struct xstack_sock */
+    enum xstack_sock_dom sock_dom;
+    enum xstack_sock_type sock_type;
+    enum xstack_sock_proto sock_proto;
+    struct xstack_sockaddr sock_addr;
 };
 
-static RB_HEAD(udp_socket_tree, udp_socket) upd_socket_tree_head =
+static RB_HEAD(udp_sock_tree, xstack_sock) upd_sock_tree_head =
     RB_INITIALIZER(_head);
 
-static int udp_socket_cmp(struct udp_socket * a, struct udp_socket * b)
+static int udp_socket_cmp(struct xstack_sock * a, struct xstack_sock * b)
 {
-    return memcmp(&a->addr, &b->addr, sizeof(struct xstack_sockaddr));
+    return memcmp(&a->info.sock_addr, &b->info.sock_addr, sizeof(struct xstack_sockaddr));
 }
 
-RB_GENERATE_STATIC(udp_socket_tree, udp_socket, _entry, udp_socket_cmp);
+RB_GENERATE_STATIC(udp_sock_tree, xstack_sock, data.udp._entry, udp_socket_cmp);
 
-static struct udp_socket * find_udp_socket(const struct xstack_sockaddr * addr)
+static struct xstack_sock * find_udp_socket(const struct xstack_sockaddr * addr)
 {
-    struct udp_socket_find find = {
-        .addr = *addr,
+    struct xstack_sock_info find = {
+        .sock_addr = *addr,
     };
 
-    return RB_FIND(udp_socket_tree, &upd_socket_tree_head,
-                   (struct udp_socket *)(&find));
+    return RB_FIND(udp_sock_tree, &upd_sock_tree_head,
+                   (struct xstack_sock *)(&find));
 }
 
 static void udp_hton(const struct udp_hdr * host, struct udp_hdr * net)
@@ -61,31 +57,19 @@ static void udp_ntoh(const struct udp_hdr * net, struct udp_hdr * host)
     host->udp_len = ntohs(net->udp_len);
 }
 
-struct xstack_sock * xstack_udp_alloc_sock(void)
+int xstack_udp_bind(struct xstack_sock * sock)
 {
-    struct udp_socket * udp_sock;
-
-    udp_sock = calloc(1, sizeof(struct udp_socket));
-    return (udp_sock) ? &udp_sock->sock : NULL;
-}
-
-int xstack_udp_bind(struct xstack_sock * sock,
-                    const struct xstack_sockaddr * sockaddr)
-{
-    struct udp_socket * udp_sock = container_of(sock, struct udp_socket, sock);
-
-    if (sockaddr->port > XSTACK_SOCK_PORT_MAX) {
+    if (sock->info.sock_addr.port > XSTACK_SOCK_PORT_MAX) {
         errno = EINVAL;
         return -1;
     }
 
-    if (find_udp_socket(sockaddr)) {
+    if (find_udp_socket(&sock->info.sock_addr)) {
         errno = EADDRINUSE;
         return -1;
     }
 
-    udp_sock->addr = *sockaddr;
-    RB_INSERT(udp_socket_tree, &upd_socket_tree_head, udp_sock);
+    RB_INSERT(udp_sock_tree, &upd_sock_tree_head, sock);
 
     return 0;
 }
@@ -97,7 +81,7 @@ int xstack_udp_bind(struct xstack_sock * sock,
 static int udp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsize)
 {
     struct udp_hdr * udp = (struct udp_hdr *)payload;
-    struct udp_socket * udp_sock;
+    struct xstack_sock * sock;
     struct xstack_sockaddr sockaddr;
 
     if (bsize < sizeof(struct udp_hdr)) {
@@ -110,15 +94,15 @@ static int udp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsi
 
     sockaddr.inet4_addr = ip_hdr->ip_dst;
     sockaddr.port = udp->udp_dport;
-    udp_sock = find_udp_socket(&sockaddr);
-    if (udp_sock) {
+    sock = find_udp_socket(&sockaddr);
+    if (sock) {
         int retval;
         struct xstack_sockaddr srcaddr = {
             .inet4_addr = ip_hdr->ip_src,
             .port = udp->udp_sport,
         };
 
-        retval = xstack_sock_dgram_input(&udp_sock->sock,
+        retval = xstack_sock_dgram_input(sock,
                                          &srcaddr,
                                          payload + sizeof(struct udp_hdr),
                                          bsize - sizeof(struct udp_hdr));
@@ -154,31 +138,28 @@ static int udp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsi
 }
 IP_PROTO_INPUT_HANDLER(IP_PROTO_UDP, udp_input);
 
-int xstack_udp_send(int fd, const struct xstack_cmsg_dgram_send * args)
+int xstack_udp_send(struct xstack_sock * sock,
+                    const struct xstack_dgram * dgram)
 {
-    uint8_t buf[sizeof(struct udp_hdr) + args->buf_size];
+    uint8_t buf[sizeof(struct udp_hdr) + dgram->buf_size];
     struct udp_hdr * udp = (struct udp_hdr *)buf;
     uint8_t * payload = udp->data;
-    struct udp_socket * udp_sock = container_of(args->sock, struct udp_socket,
-                                                sock);
+    const struct xstack_sock_info * sock_info = &dgram->sock_info;
 
-    if (!(args->buf_size > 0 && args->buf_size < UDP_MAXLEN)) {
+    if (!(dgram->buf_size > 0 && dgram->buf_size < UDP_MAXLEN)) {
         return -EINVAL;
     }
 
     /*
      * UDP Header.
      */
-    udp->udp_sport = udp_sock->addr.port;
-    udp->udp_dport = args->dstaddr.port;
-    udp->udp_len = sizeof(struct udp_hdr) + args->buf_size;
+    udp->udp_sport = sock_info->sock_addr.port;
+    udp->udp_dport = dgram->addr.port;
+    udp->udp_len = sizeof(struct udp_hdr) + dgram->buf_size;
     udp->udp_csum = 0; /* TODO calc UDP csum */
 
-    /*
-     * Read the payload from the egress pipe.
-     */
-    read(fd, payload, args->buf_size);
+    memcpy(payload, dgram->buf, dgram->buf_size);
 
     udp_hton(udp, udp);
-    return ip_send(args->dstaddr.inet4_addr, IP_PROTO_UDP, buf, sizeof(buf));
+    return ip_send(dgram->addr.inet4_addr, IP_PROTO_UDP, buf, sizeof(buf));
 }

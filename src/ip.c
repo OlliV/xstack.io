@@ -2,12 +2,12 @@
 #include <string.h>
 
 #include "xstack_arp.h"
-#include "xstack_icmp.h"
 #include "xstack_in.h"
-#include "xstack_ip.h"
 
 #include "ip_defer.h"
 #include "logger.h"
+#include "xstack_icmp.h"
+#include "xstack_ip.h"
 
 SET_DECLARE(_ip_proto_handlers, struct _ip_proto_handler);
 
@@ -35,17 +35,6 @@ int ip_config(int ether_handle, in_addr_t ip_addr, in_addr_t netmask)
     }
 
     return 0;
-}
-
-void ip2str(in_addr_t ip, char * buf)
-{
-    unsigned char bytes[4];
-
-    bytes[0] = ip & 0xFF;
-    bytes[1] = (ip >> 8) & 0xFF;
-    bytes[2] = (ip >> 16) & 0xFF;
-    bytes[3] = (ip >> 24) & 0xFF;
-    sprintf(buf, "%d.%d.%d.%d", bytes[3], bytes[2], bytes[1], bytes[0]);
 }
 
 uint16_t ip_checksum(void * dp, size_t bsize)

@@ -3,13 +3,13 @@
 
 #include "xstack_arp.h"
 #include "xstack_ether.h"
-#include "xstack_ip.h"
 #include "xstack_util.h"
 
 #include "ip_defer.h"
 #include "logger.h"
 #include "tree.h"
 #include "xstack_internal.h"
+#include "xstack_ip.h"
 
 #define ARP_CACHE_AGE_MAX (20 * 60 * 60) /* Expiration time */
 

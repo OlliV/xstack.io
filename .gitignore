@@ -1,4 +1,6 @@
 inetd
+libxstack.a
 *.d
 *.swp
 /latex
+/build_lib

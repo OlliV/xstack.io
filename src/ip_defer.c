@@ -3,10 +3,10 @@
 
 #include "xstack_ether.h"
 #include "xstack_in.h"
-#include "xstack_ip.h"
 
 #include "logger.h"
 #include "xstack_internal.h"
+#include "xstack_ip.h"
 
 struct ip_defer {
     int tries;

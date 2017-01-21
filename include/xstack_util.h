@@ -57,6 +57,9 @@ static inline unsigned long ulmax(unsigned long a, unsigned long b)
 static inline unsigned long ulmin(unsigned long a, unsigned long b)
 { return (a < b ? a : b); }
 
+static inline unsigned int smin(size_t a, size_t b)
+{ return (a < b ? a : b); }
+
 static inline unsigned int uround_up(unsigned n, unsigned s)
 {
     return ((n + s - 1) / s) * s;

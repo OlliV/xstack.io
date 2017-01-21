@@ -1,10 +1,9 @@
 #include <errno.h>
 #include <string.h>
 
+#include "logger.h"
 #include "xstack_icmp.h"
 #include "xstack_ip.h"
-
-#include "logger.h"
 
 static void icmp_hton(const struct icmp * host, struct icmp * net)
 {

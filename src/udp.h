@@ -30,18 +30,12 @@ struct udp_hdr {
     uint8_t data[0];        /*!< Datagram contents. */
 };
 
-struct xstack_sockaddr;
-struct xstack_cmsg_dgram_send;
+struct xstack_sock;
+struct xstack_dgram;
 
-/**
- * Allocate a UDP socket descriptor.
- */
-struct xstack_sock * xstack_udp_alloc_sock(void);
-
-int xstack_udp_bind(struct xstack_sock * sock,
-                    const struct xstack_sockaddr * sockaddr);
-
-int xstack_udp_send(int fd, const struct xstack_cmsg_dgram_send * args);
+int xstack_udp_bind(struct xstack_sock * sock);
+int xstack_udp_send(struct xstack_sock * sock,
+                    const struct xstack_dgram * dgram);
 
 #endif /* XSTACK_UDP_H */
 

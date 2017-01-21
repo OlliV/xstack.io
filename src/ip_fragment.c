@@ -4,10 +4,10 @@
 #include <string.h>
 
 #include "xstack_in.h"
-#include "xstack_ip.h"
 
 #include "logger.h"
 #include "tree.h"
+#include "xstack_ip.h"
 
 #define FRAG_MAX 8192
 #define FRAG_MAP_SIZE (FRAG_MAX / 32)

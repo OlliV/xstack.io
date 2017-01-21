@@ -113,14 +113,6 @@ int ip_config(int ether_handle, in_addr_t ip_addr, in_addr_t netmask);
  */
 
 /**
- * Convert an IP address from integer representation to a C string.
- * @note The minimum size of buf is IP_STR_LEN.
- * @param[in] ip is the IP address to be converted.
- * @param[out] buf is the destination buffer.
- */
-void ip2str(in_addr_t ip, char * buf);
-
-/**
  * Calculate the Internet checksum.
  */
 uint16_t ip_checksum(void * dp, size_t bsize);

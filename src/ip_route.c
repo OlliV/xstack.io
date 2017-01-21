@@ -2,11 +2,11 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "xstack_ip.h"
 #include "xstack_util.h"
 
 #include "queue.h"
 #include "tree.h"
+#include "xstack_ip.h"
 
 struct ip_route_entry {
     struct ip_route route;
