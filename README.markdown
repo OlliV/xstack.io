@@ -1,8 +1,6 @@
 xstack.io
 =========
 
-[![Build Status](http://xstack.io:8080/buildStatus/icon?job=xstack)](http://xstack.io:8080/job/xstack)
-
 Copyright (c) 2015, 2017 Olli Vanhoja <olli.vanhoja@cs.helsinki.fi>
 All rights reserved.
 
