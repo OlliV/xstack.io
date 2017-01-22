@@ -55,6 +55,7 @@ clean:
 	$(RM) -r build_lib
 	$(RM) libxstack.a
 	$(RM) $(EBIN)
+	$(RM) $(EBIN:=.d)
 	$(RM) -r latex
 
 .PHONY: doc libxstack examples clean

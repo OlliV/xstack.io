@@ -50,7 +50,7 @@ static struct xstack_sock sockets[] = {
             .inet4_addr = 167772162,
             .port = 10,
         },
-        .shmem_path = "/tmp/utelnet.sock",
+        .shmem_path = "/tmp/unetcat.sock",
     },
 };
 

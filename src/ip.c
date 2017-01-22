@@ -137,8 +137,14 @@ int ip_input(const struct ether_hdr * e_hdr, uint8_t * payload, size_t bsize)
     }
 
     hlen = ip_hdr_hlen(ip);
-    if (hlen < 20 || ip->ip_len != bsize) {
+    if (hlen < 20) {
         LOG(LOG_ERR, "Incorrect packet header length: %d", (int)hlen);
+        return 0;
+    }
+
+    if (ip->ip_len != bsize) {
+        LOG(LOG_ERR, "Packet size mismatch. iplen = %d, bsize = %d",
+            (int)ip->ip_len, (int)bsize);
         return 0;
     }
 
