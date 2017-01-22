@@ -15,14 +15,6 @@
 #include "xstack_internal.h"
 #include "xstack_ip.h"
 
-struct udp_socket_find {
-    /* Should be same as static entries in struct xstack_sock */
-    enum xstack_sock_dom sock_dom;
-    enum xstack_sock_type sock_type;
-    enum xstack_sock_proto sock_proto;
-    struct xstack_sockaddr sock_addr;
-};
-
 static RB_HEAD(udp_sock_tree, xstack_sock) upd_sock_tree_head =
     RB_INITIALIZER(_head);
 
