@@ -4,13 +4,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "xstack_arp.h"
 #include "xstack_in.h"
 #include "xstack_socket.h"
 
 #include "ip_defer.h"
 #include "logger.h"
 #include "udp.h"
+#include "xstack_arp.h"
 #include "xstack_icmp.h"
 #include "xstack_internal.h"
 #include "xstack_ip.h"

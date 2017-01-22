@@ -9,13 +9,13 @@
 #include <unistd.h>
 
 #include "linker_set.h"
-#include "xstack_ether.h"
 #include "xstack_in.h"
 #include "xstack_socket.h"
 
 #include "logger.h"
 #include "queue.h"
 #include "udp.h"
+#include "xstack_ether.h"
 #include "xstack_internal.h"
 #include "xstack_ip.h"
 

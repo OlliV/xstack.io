@@ -1,11 +1,11 @@
 #include <errno.h>
 #include <string.h>
 
-#include "xstack_arp.h"
 #include "xstack_in.h"
 
 #include "ip_defer.h"
 #include "logger.h"
+#include "xstack_arp.h"
 #include "xstack_icmp.h"
 #include "xstack_ip.h"
 

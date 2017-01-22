@@ -1,13 +1,13 @@
 #include <errno.h>
 #include <string.h>
 
-#include "xstack_arp.h"
-#include "xstack_ether.h"
 #include "xstack_util.h"
 
 #include "ip_defer.h"
 #include "logger.h"
 #include "tree.h"
+#include "xstack_arp.h"
+#include "xstack_ether.h"
 #include "xstack_internal.h"
 #include "xstack_ip.h"
 

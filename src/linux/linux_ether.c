@@ -12,10 +12,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "xstack_ether.h"
 #include "xstack_util.h"
 
 #include "../logger.h"
+#include "../xstack_ether.h"
 
 #define DEFAULT_IF      "eth0"
 #define ETHER_MAX_IF    1

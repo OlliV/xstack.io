@@ -1,10 +1,10 @@
 #include <errno.h>
 #include <string.h>
 
-#include "xstack_ether.h"
 #include "xstack_in.h"
 
 #include "logger.h"
+#include "xstack_ether.h"
 #include "xstack_internal.h"
 #include "xstack_ip.h"
 
