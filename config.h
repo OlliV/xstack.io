@@ -11,9 +11,9 @@
  */
 #define XSTACK_LOGGING              1
 
-#define XSTACK_DATAGRAM_SIZE_MAX    1024
+#define XSTACK_DATAGRAM_SIZE_MAX    4096
 
-#define XSTACK_DATAGRAM_BUF_SIZE    2048
+#define XSTACK_DATAGRAM_BUF_SIZE    16384
 
 /**
  * Periodic IP event tick.
