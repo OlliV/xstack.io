@@ -98,6 +98,27 @@ static int xstack_bind(struct xstack_sock * sock)
     }
 }
 
+int xstack_sock_dgram_input(struct xstack_sock * sock,
+                            struct xstack_sockaddr * srcaddr,
+                            uint8_t * buf, size_t bsize)
+{
+    int dgram_index;
+    struct xstack_dgram * dgram;
+
+    while ((dgram_index = queue_alloc(sock->ingress_q)) == -1);
+    dgram = (struct xstack_dgram *)(sock->ingress_data + dgram_index);
+
+    dgram->srcaddr = *srcaddr;
+    dgram->dstaddr = sock->info.sock_addr;
+    dgram->buf_size = bsize;
+    memcpy(dgram->buf, buf, bsize);
+
+    queue_commit(sock->ingress_q);
+    kill(sock->ctrl->pid_end, SIGUSR2);
+
+    return 0;
+}
+
 static void run_periodic_tasks(int delta_time)
 {
     void ** taskp;
@@ -170,6 +191,11 @@ static void * xstack_egress_thread(void * arg)
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGUSR2);
 
+    if (pthread_sigmask(SIG_BLOCK, &sigset, NULL) == -1) {
+        LOG(LOG_ERR, "Unable to ignore SIGUSR2");
+        abort();
+    }
+
     while (1) {
         struct timespec timeout = {
             .tv_sec = XSTACK_PERIODIC_EVENT_SEC,
@@ -186,11 +212,10 @@ static void * xstack_egress_thread(void * arg)
                 struct xstack_dgram * dgram;
                 enum xstack_sock_proto proto;
 
-                while(!queue_peek(sock->egress_q, &dgram_index));
+                while (!queue_peek(sock->egress_q, &dgram_index));
                 dgram = (struct xstack_dgram *)(sock->egress_data +
                                                 dgram_index);
 
-                /* TODO check that the protocol matches with the socket */
                 LOG(LOG_DEBUG, "Sending a datagram");
                 proto = sock->info.sock_proto;
                 if (proto > XIP_PROTO_NONE &&
@@ -223,8 +248,6 @@ static void xstack_init(void)
         int fd;
         void * pa;
 
-        sock->info.pid_inetd = mypid;
-
         fd = open(sock->shmem_path, O_RDWR);
         if (fd == -1) {
             perror("Failed to open shmem file");
@@ -238,6 +261,12 @@ static void xstack_init(void)
             exit(1);
         }
         memset(pa, 0, XSTACK_SHMEM_SIZE);
+
+        sock->ctrl = XSTACK_SOCK_CTRL(pa);
+        *sock->ctrl = (struct xstack_sock_ctrl){
+            .pid_inetd = mypid,
+            .pid_end = 0,
+        };
 
         sock->ingress_data = XSTACK_INGRESS_DADDR(pa);
         sock->ingress_q = XSTACK_INGRESS_QADDR(pa);
@@ -288,26 +317,6 @@ void xstack_stop(void)
     pthread_join(egress_tid, NULL);
 
     set_state(XSTACK_STOPPED);
-}
-
-int xstack_sock_dgram_input(struct xstack_sock * sock,
-                            struct xstack_sockaddr * srcaddr,
-                            uint8_t * buf, size_t bsize)
-{
-    int dgram_index;
-    struct xstack_dgram * dgram;
-
-    while ((dgram_index = queue_alloc(sock->ingress_q)) == -1);
-    dgram = (struct xstack_dgram *)(sock->ingress_data + dgram_index);
-
-    dgram->sock_info = sock->info;
-    dgram->addr = *srcaddr;
-    dgram->buf_size = bsize;
-    memcpy(dgram->buf, buf, bsize);
-
-    queue_commit(sock->ingress_q);
-
-    return 0;
 }
 
 int main(int argc, char * argv[])

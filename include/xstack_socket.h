@@ -15,21 +15,28 @@
 #include "xstack_in.h"
 
 #define XSTACK_SHMEM_SIZE \
-    (2 * sizeof(struct queue_cb) + 2 * XSTACK_DATAGRAM_BUF_SIZE)
+    (sizeof(struct xstack_sock_ctrl) + \
+     2 * sizeof(struct queue_cb) + \
+     2 * XSTACK_DATAGRAM_BUF_SIZE)
+
+#define XSTACK_SOCK_CTRL(x) \
+    ((struct xstack_sock_ctrl *)(x))
 
 #define XSTACK_INGRESS_QADDR(x) \
-    ((struct queue_cb *)(x))
+    ((struct queue_cb *)((uintptr_t)XSTACK_SOCK_CTRL(x) + \
+                         sizeof(struct xstack_sock_ctrl)))
 
 #define XSTACK_INGRESS_DADDR(x) \
-    ((uint8_t *)((uintptr_t)(x) + sizeof(struct queue_cb)))
+    ((uint8_t *)((uintptr_t)XSTACK_INGRESS_QADDR(x) + \
+                 sizeof(struct queue_cb)))
 
 #define XSTACK_EGRESS_QADDR(x) \
-    ((struct queue_cb *)((uintptr_t)(x) + sizeof(struct queue_cb) + \
-                        XSTACK_DATAGRAM_BUF_SIZE))
+    ((struct queue_cb *)((uintptr_t)XSTACK_INGRESS_DADDR(x) + \
+                         XSTACK_DATAGRAM_BUF_SIZE))
 
 #define XSTACK_EGRESS_DADDR(x) \
-    ((uint8_t *)(XSTACK_INGRESS_DADDR(x) + XSTACK_DATAGRAM_BUF_SIZE + \
-             sizeof(struct queue_cb)))
+    ((uint8_t *)((uintptr_t)XSTACK_EGRESS_QADDR(x) + \
+                 sizeof(struct queue_cb)))
 
 /**
  * Socket domain.
@@ -74,17 +81,21 @@ struct xstack_sockaddr {
     };
 };
 
+struct xstack_sock_ctrl {
+    pid_t pid_inetd;
+    pid_t pid_end;
+};
+
 struct xstack_sock_info {
     enum xstack_sock_dom sock_dom;
     enum xstack_sock_type sock_type;
     enum xstack_sock_proto sock_proto;
     struct xstack_sockaddr sock_addr;
-    pid_t pid_inetd;
 } info;
 
 struct xstack_dgram {
-    struct xstack_sock_info sock_info;
-    struct xstack_sockaddr addr;
+    struct xstack_sockaddr srcaddr;
+    struct xstack_sockaddr dstaddr;
     size_t buf_size;
     uint8_t buf[0];
 };

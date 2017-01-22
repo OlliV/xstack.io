@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "xstack_socket.h"
 
@@ -18,7 +19,8 @@ int main(void)
     while (1) {
         struct xstack_sockaddr addr;
 
-        xstack_recvfrom(sock, buf, sizeof(buf), 0, &addr);
+        memset(buf, 0, sizeof(buf));
+        xstack_recvfrom(sock, buf, sizeof(buf) - 1, 0, &addr);
         fprintf(stderr, buf);
     }
 }

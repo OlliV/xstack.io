@@ -1,13 +1,27 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
 #include "xstack_socket.h"
 #include "xstack_util.h"
 
 /* TODO bind fn for outbound connections */
+
+static void block_sigusr2(void)
+{
+    sigset_t sigset;
+
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGUSR2);
+
+    if (pthread_sigmask(SIG_BLOCK, &sigset, NULL) == -1) {
+        abort();
+    }
+}
 
 void * xstack_listen(const char * socket_path)
 {
@@ -23,29 +37,39 @@ void * xstack_listen(const char * socket_path)
     if (pa == MAP_FAILED) {
         return NULL;
     }
+
+    block_sigusr2();
+    XSTACK_SOCK_CTRL(pa)->pid_end = getpid();
+
     return pa;
 }
-
-/* TODO connection cache */
-static struct xstack_sock_info last_conn;
 
 ssize_t xstack_recvfrom(void * socket, void * restrict buffer, size_t length,
                         int flags, struct xstack_sockaddr * restrict address)
 {
     struct queue_cb * ingress_q = XSTACK_INGRESS_QADDR(socket);
     struct xstack_dgram * dgram;
+    sigset_t sigset;
     int dgram_index;
     ssize_t rd;
 
-    /* Implement signaling */
-    while(!queue_peek(ingress_q, &dgram_index));
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGUSR2);
+
+    do {
+        struct timespec timeout = {
+            .tv_sec = XSTACK_PERIODIC_EVENT_SEC,
+            .tv_nsec = 0,
+        };
+
+        sigtimedwait(&sigset, NULL, &timeout);
+    } while (!queue_peek(ingress_q, &dgram_index));
     dgram = (struct xstack_dgram *)(XSTACK_INGRESS_DADDR(socket) + dgram_index);
 
     /* TODO Implement flags */
 
-    last_conn = dgram->sock_info;
     if (address)
-        *address = dgram->addr;
+        *address = dgram->srcaddr;
     rd = smin(length, dgram->buf_size);
     memcpy(buffer, dgram->buf, rd);
     dgram = NULL;
@@ -58,6 +82,7 @@ ssize_t xstack_recvfrom(void * socket, void * restrict buffer, size_t length,
 ssize_t xstack_sendto(void * socket, const void * buffer, size_t length,
                       int flags, const struct xstack_sockaddr * dest_addr)
 {
+    const struct xstack_sock_ctrl * ctrl = XSTACK_SOCK_CTRL(socket);
     struct queue_cb * egress_q = XSTACK_EGRESS_QADDR(socket);
     struct xstack_dgram * dgram;
     int dgram_index;
@@ -70,12 +95,14 @@ ssize_t xstack_sendto(void * socket, const void * buffer, size_t length,
     while ((dgram_index = queue_alloc(egress_q)) == -1);
     dgram = (struct xstack_dgram *)(XSTACK_EGRESS_DADDR(socket) + dgram_index);
 
-    dgram->sock_info = last_conn;
-    dgram->addr = *dest_addr;
+    /* Ignored by the implementation */
+    memset(&dgram->srcaddr, 0, sizeof(struct xstack_sockaddr));
+
+    dgram->dstaddr = *dest_addr;
     memcpy(dgram->buf, buffer, length);
 
     queue_commit(egress_q);
-    kill(last_conn.pid_inetd, SIGSTOP);
+    kill(ctrl->pid_inetd, SIGUSR2);
 
     return length;
 }

@@ -23,20 +23,20 @@ struct queue_cb;
  * A generic socket descriptor.
  */
 struct xstack_sock {
-    /* Static */
-    struct xstack_sock_info info;
-    char shmem_path[80];
+    struct xstack_sock_info info; /* Must be first */
+
+    struct xstack_sock_ctrl * ctrl;
     uint8_t * ingress_data;
     struct queue_cb * ingress_q;
     uint8_t * egress_data;
     struct queue_cb * egress_q;
 
-    /* Runtime */
     union {
         struct {
             RB_ENTRY(xstack_sock) _entry;
         } udp;
     } data;
+    char shmem_path[80];
 };
 
 /**

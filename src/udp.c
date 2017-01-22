@@ -144,7 +144,6 @@ int xstack_udp_send(struct xstack_sock * sock,
     uint8_t buf[sizeof(struct udp_hdr) + dgram->buf_size];
     struct udp_hdr * udp = (struct udp_hdr *)buf;
     uint8_t * payload = udp->data;
-    const struct xstack_sock_info * sock_info = &dgram->sock_info;
 
     if (!(dgram->buf_size > 0 && dgram->buf_size < UDP_MAXLEN)) {
         return -EINVAL;
@@ -153,13 +152,13 @@ int xstack_udp_send(struct xstack_sock * sock,
     /*
      * UDP Header.
      */
-    udp->udp_sport = sock_info->sock_addr.port;
-    udp->udp_dport = dgram->addr.port;
+    udp->udp_sport = sock->info.sock_addr.port;
+    udp->udp_dport = dgram->dstaddr.port;
     udp->udp_len = sizeof(struct udp_hdr) + dgram->buf_size;
     udp->udp_csum = 0; /* TODO calc UDP csum */
 
     memcpy(payload, dgram->buf, dgram->buf_size);
 
     udp_hton(udp, udp);
-    return ip_send(dgram->addr.inet4_addr, IP_PROTO_UDP, buf, sizeof(buf));
+    return ip_send(dgram->dstaddr.inet4_addr, IP_PROTO_UDP, buf, sizeof(buf));
 }
