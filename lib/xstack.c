@@ -66,15 +66,16 @@ ssize_t xstack_recvfrom(void * socket, void * restrict buffer, size_t length,
     } while (!queue_peek(ingress_q, &dgram_index));
     dgram = (struct xstack_dgram *)(XSTACK_INGRESS_DADDR(socket) + dgram_index);
 
-    /* TODO Implement flags */
-
-    if (address)
+    if (address) {
         *address = dgram->srcaddr;
+    }
     rd = smin(length, dgram->buf_size);
     memcpy(buffer, dgram->buf, rd);
     dgram = NULL;
 
-    queue_discard(ingress_q, 1);
+    if (!(flags & XSTACK_MSG_PEEK)) {
+        queue_discard(ingress_q, 1);
+    }
 
     return rd;
 }

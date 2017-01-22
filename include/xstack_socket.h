@@ -100,6 +100,8 @@ struct xstack_dgram {
     uint8_t buf[0];
 };
 
+#define XSTACK_MSG_PEEK 0x1
+
 void * xstack_listen(const char * socket_path);
 ssize_t xstack_recvfrom(void * socket, void * restrict buffer, size_t length,
                         int flags, struct xstack_sockaddr * restrict address);
