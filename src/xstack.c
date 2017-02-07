@@ -14,6 +14,7 @@
 
 #include "logger.h"
 #include "queue.h"
+#include "tcp.h"
 #include "udp.h"
 #include "xstack_ether.h"
 #include "xstack_internal.h"
@@ -38,6 +39,7 @@ static pthread_t ingress_tid, egress_tid;
 static int ether_handle;
 
 static xstack_send_fn * proto_send[] = {
+    [XIP_PROTO_TCP] = xstack_tcp_send,
     [XIP_PROTO_UDP] = xstack_udp_send,
 };
 
@@ -332,6 +334,9 @@ int main(int argc, char * argv[])
         fprintf(stderr, "Usage: %s INTERFACE\n", argv[0]);
         exit(1);
     }
+
+    toggle_dbgmsg("src/tcp.c");
+    toggle_dbgmsg("src/ether.c");
 
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGUSR1);
