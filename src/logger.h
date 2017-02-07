@@ -13,7 +13,7 @@
 
 #if XSTACK_LOGGING != 0
 #define LOG(_level_, _fmt_, ...) do {                   \
-    DYNDBUG_PRINT(fprintf, stderr, "%c:%s: "_fmt_,      \
+    DYNDBUG_PRINT(fprintf, stderr, "%c:%s: "_fmt_ "\n", \
                   _level_, __func__, ##__VA_ARGS__);    \
 } while (0)
 #else
