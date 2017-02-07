@@ -15,8 +15,9 @@
 #include "xstack_internal.h"
 #include "xstack_ip.h"
 
-static RB_HEAD(udp_sock_tree, xstack_sock) upd_sock_tree_head =
-    RB_INITIALIZER(_head);
+RB_HEAD(udp_sock_tree, xstack_sock);
+
+static struct udp_sock_tree upd_sock_tree_head = RB_INITIALIZER();
 
 static int udp_socket_cmp(struct xstack_sock * a, struct xstack_sock * b)
 {

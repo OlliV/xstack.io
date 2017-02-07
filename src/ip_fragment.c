@@ -27,10 +27,10 @@ struct packet_buf {
     RB_ENTRY(packet_buf) _entry;
 };
 
-static struct packet_buf packet_buffer[4];
+RB_HEAD(packet_buf_tree, packet_buf);
 
-static RB_HEAD(packet_buf_tree, packet_buf) packet_buffer_head =
-    RB_INITIALIZER(_head);
+static struct packet_buf packet_buffer[4];
+static struct packet_buf_tree packet_buffer_head = RB_INITIALIZER();
 
 /*
  * TODO Timer for giving up

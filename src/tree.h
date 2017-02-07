@@ -295,7 +295,7 @@ struct name {								\
 	struct type *rbh_root; /* root of the tree */			\
 }
 
-#define RB_INITIALIZER(root)						\
+#define RB_INITIALIZER() \
 	{ NULL }
 
 #define RB_INIT(root) do {						\

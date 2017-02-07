@@ -45,7 +45,6 @@ uint16_t ip_checksum(void * dp, size_t bsize)
     uint16_t word;
 
     for (i = 0; i + 1 < bsize; i += 2) {
-
         memcpy(&word, data + i, 2);
         acc += word;
         if (acc > 0xffff) {

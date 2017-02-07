@@ -20,9 +20,10 @@ struct arp_cache_entry {
     RB_ENTRY(arp_cache_entry) _entry;
 };
 
+RB_HEAD(arp_cache_tree, arp_cache_entry);
+
 static struct arp_cache_entry arp_cache[XSTACK_ARP_CACHE_SIZE];
-static RB_HEAD(arp_cache_tree, arp_cache_entry) arp_cache_head =
-    RB_INITIALIZER(_head);
+static struct arp_cache_tree arp_cache_head = RB_INITIALIZER();
 
 static int arp_cache_cmp(struct arp_cache_entry * a, struct arp_cache_entry * b)
 {
