@@ -124,12 +124,12 @@ static uint16_t tcp_checksum(const struct xstack_sockaddr * restrict src,
     size_t i;
     uint16_t word;
     struct {
-        unsigned src_addr   : 32;
-        unsigned dst_addr   : 32;
-        unsigned zeros      : 8;
-        unsigned proto      : 8;
-        unsigned tcp_len    : 16;
-    } pseudo_header = {
+        uint32_t src_addr;
+        uint32_t dst_addr;
+        uint8_t zeros;
+        uint8_t proto;
+        uint16_t tcp_len;
+    } __attribute__((packed, aligned(4))) pseudo_header = {
         .src_addr = htonl(src->inet4_addr),
         .dst_addr = htonl(dst->inet4_addr),
         .zeros = 0,
@@ -292,18 +292,16 @@ static int tcp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsi
     attr.remote.inet4_addr = ip_hdr->ip_src;
     attr.remote.port = ntohs(tcp->tcp_sport);
 
-    /* FIXME Buggy */
+    /* TODO Can't verify on LXC env */
 #if 0
     if (tcp_checksum(&attr.remote, &attr.local, tcp, bsize) != 0) {
         LOG(LOG_INFO, "TCP checksum fail");
-        /* TODO How should we fail? */
+        /* TODO Fail properly */
         return -EBADMSG;
     }
 #endif
 
     tcp_ntoh(tcp, tcp);
-
-    LOG(LOG_INFO, "TCP flags: %u", tcp->tcp_flags);
 
     struct tcp_conn_tcb * conn = tcp_find_connection(&attr);
     if (!conn && (tcp->tcp_flags & TCP_SYN)) { /* New connection */
@@ -330,7 +328,6 @@ static int tcp_input(const struct ip_hdr * ip_hdr, uint8_t * payload, size_t bsi
         tcp->tcp_dport = attr.remote.port;
         tcp_hton(&attr.local, &attr.remote, tcp, tcp, retval);
     }
-    LOG(LOG_INFO, "retval: %d", retval);
 
     return retval;
 }
